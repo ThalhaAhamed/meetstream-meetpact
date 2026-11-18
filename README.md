@@ -9,10 +9,11 @@ notes, and carries each person's commitments, progress and blockers forward from
 next. It can also run your stand-up for you, out loud, from the first hello to "I'll leave the meeting now".
 
 [![CI](https://img.shields.io/github/actions/workflow/status/ThalhaAhamed/meetpact/ci.yml?label=CI)](https://github.com/ThalhaAhamed/meetpact/actions)
-![Python](https://img.shields.io/badge/python-3.11%2B-111111)
-![Node](https://img.shields.io/badge/node-18%2B-111111)
-[![Built on MeetStream](https://img.shields.io/badge/built%20on-MeetStream-FFD23F)](https://meetstream.ai)
-[![License: MIT](https://img.shields.io/badge/license-MIT-FFD23F)](LICENSE)
+![Python](https://img.shields.io/badge/python-3.12%2B-151C2E)
+![Node](https://img.shields.io/badge/node-22%2B-151C2E)
+[![Built on MeetStream](https://img.shields.io/badge/built%20on-MeetStream-9EC1FF)](https://meetstream.ai)
+![Self-hosted](https://img.shields.io/badge/self--hosted-Docker-9EC1FF)
+[![License: MIT](https://img.shields.io/badge/license-MIT-9EC1FF)](LICENSE)
 
 [Quick start](#-quick-start) · [Features](#-features) · [Screenshots](#-screenshots) · [How it works](#-how-it-works) · [Docs](#-documentation) · [FAQ](#-faq)
 
