@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     MEETSTREAM_API_KEY: Optional[str] = None
     MEETSTREAM_BASE_URL: str = "https://api.meetstream.ai/api/v1"
     MEETSTREAM_WEBHOOK_SECRET: Optional[str] = None  # workspace webhook signing secret, optional
-    BOT_NAME: str = "Progress Tracker AI Notetaker"
+    BOT_NAME: str = "MeetPact AI Notetaker"
     # Post-call transcription provider. "meetstream" needs no extra key on the
     # MeetStream account; "deepgram" / "assemblyai" need that provider set up there.
     TRANSCRIPT_PROVIDER: str = "meetstream"

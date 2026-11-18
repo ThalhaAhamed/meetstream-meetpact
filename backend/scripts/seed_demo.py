@@ -298,7 +298,7 @@ def main(reset: bool) -> None:
                     shown = name if name != "Sam Okafor" else "samo-laptop"
                     emp = maya if name == "Maya Chen" else employees[name]
                     db.add(MeetingParticipant(meeting_id=m.id, display_name=shown, employee_id=emp.id, mapping="auto", notice_sent=True))
-                db.add(MeetingParticipant(meeting_id=m.id, display_name="Progress Tracker AI Notetaker", is_bot=True, notice_sent=True))
+                db.add(MeetingParticipant(meeting_id=m.id, display_name="MeetPact AI Notetaker", is_bot=True, notice_sent=True))
                 db.add(TranscriptSegment(meeting_id=m.id, position=pos, speaker="Maya Chen", employee_id=maya.id, start_seconds=0,
                                          text="Morning everyone, let's go round." if slot == "morning" else "Quick end-of-day check-in, let's go round."))
                 for name, story in slot_story.items():

@@ -12,12 +12,12 @@ from app.config import secret_key
 from app.db import get_db
 from app.models import User
 
-COOKIE = "ept_session"
+COOKIE = "meetpact_session"
 MAX_AGE = 60 * 60 * 24 * 14
 
 
 def _serializer() -> URLSafeTimedSerializer:
-    return URLSafeTimedSerializer(secret_key(), salt="ept-session")
+    return URLSafeTimedSerializer(secret_key(), salt="meetpact-session")
 
 
 def hash_password(pw: str) -> str:

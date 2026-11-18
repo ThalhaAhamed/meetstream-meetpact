@@ -40,4 +40,4 @@ jobs:
     needs: [backend, frontend]
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t employee-progress-tracker .
+      - run: docker build -t meetpact .

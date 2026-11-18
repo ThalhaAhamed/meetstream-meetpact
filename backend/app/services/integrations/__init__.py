@@ -45,7 +45,7 @@ async def push_item(db: Session, item: WorkItem, provider_name: str, actor: str 
     assignee = item.employee.email if item.employee else None
     ref: TaskRef = await provider.create_task(
         title=item.title,
-        description=(item.details or "") + f"\n\nCreated by Employee Progress Tracker"
+        description=(item.details or "") + f"\n\nCreated by MeetPact"
         + (f" for {item.employee.name}" if item.employee else ""),
         due=item.due_date,
         assignee_email=assignee,

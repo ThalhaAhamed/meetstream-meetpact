@@ -140,7 +140,7 @@ def test_launch_payload_and_consent_flow(client, db, people, monkeypatch):
         return "InMeeting"
 
     async def participants(self, bot_id):
-        return [{"displayName": "Priya Raman"}, {"displayName": "Progress Tracker AI Notetaker"}]
+        return [{"displayName": "Priya Raman"}, {"displayName": "MeetPact AI Notetaker"}]
 
     async def chats(self, bot_id):
         return []

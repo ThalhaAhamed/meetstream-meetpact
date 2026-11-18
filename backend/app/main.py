@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):
         t.cancel()
 
 
-app = FastAPI(title="Employee Progress Tracker", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="MeetPact", version="1.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.FRONTEND_ORIGIN],

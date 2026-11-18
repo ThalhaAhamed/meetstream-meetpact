@@ -30,7 +30,7 @@ export default function SignIn({ needsSetup, onSignedIn }) {
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="#111" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4 10-11" /></svg>
           </div>
           <div>
-            <p className="font-semibold">Employee Progress Tracker</p>
+            <p className="text-lg font-bold">MeetPact</p>
             <p className="text-xs text-ink-500">AI meeting notes and progress, built on MeetStream</p>
           </div>
         </div>

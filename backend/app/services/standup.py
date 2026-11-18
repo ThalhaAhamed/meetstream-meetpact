@@ -87,7 +87,7 @@ def agent_payload(db: Session, meeting: Meeting, mcp_token: str | None) -> Dict[
     if settings.public_url and mcp_token:
         mcp_servers.append({
             "url": f"{settings.public_url}/mcp",
-            "name": "Progress Tracker",
+            "name": "MeetPact",
             "timeout": 10,
             "active": True,
             "headers": {"Authorization": f"Bearer {mcp_token}"},

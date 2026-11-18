@@ -1,4 +1,4 @@
-# Employee Progress Tracker - backend dependencies
+# MeetPact - backend dependencies
 fastapi>=0.115
 uvicorn[standard]>=0.32
 sqlalchemy>=2.0.36

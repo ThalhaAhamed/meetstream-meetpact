@@ -1,4 +1,4 @@
-# Employee Progress Tracker
+# MeetPact
 
 An AI meeting notetaker that also keeps a running record of **what every person is working on**: a
 [MeetStream](https://meetstream.ai) bot joins your meetings, asks for recording consent, and writes
@@ -35,8 +35,8 @@ It is a self-hosted example app: clone it, add two API keys, run it. There is no
 Needs **Python 3.11+** and **Node 18+**.
 
 ```bash
-git clone <this repo> employee-progress-tracker
-cd employee-progress-tracker
+git clone <this repo> meetpact
+cd meetpact
 cp .env.example .env          # add MEETSTREAM_API_KEY and ANTHROPIC_API_KEY or GEMINI_API_KEY
 ```
 

@@ -61,7 +61,7 @@ async def mcp(request: Request, db: Session = Depends(get_db)):
     rid, method, params = body.get("id"), body.get("method"), body.get("params") or {}
     if method == "initialize":
         result = {"protocolVersion": "2024-11-05", "capabilities": {"tools": {"listChanged": False}},
-                  "serverInfo": {"name": "employee-progress-tracker", "version": "1.0.0"}}
+                  "serverInfo": {"name": "meetpact", "version": "1.0.0"}}
     elif method == "tools/list":
         result = {"tools": TOOLS}
     elif method == "tools/call":

@@ -62,7 +62,7 @@ def build_payload(db: Session, meeting: Meeting, join_at: Optional[datetime]) ->
             "recording_permission_denied_timeout": 60,
         },
         # Custom attribute values must be strings.
-        "custom_attributes": {"meeting_id": meeting.id, "app": "employee-progress-tracker"},
+        "custom_attributes": {"meeting_id": meeting.id, "app": "meetpact"},
     }
     if join_at:
         payload["join_at"] = join_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
