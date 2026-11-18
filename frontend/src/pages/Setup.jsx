@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Bot, CalendarDays, Check, KanbanSquare, Mail, PartyPopper, Sparkles, Users } from 'lucide-react'
+import { ArrowLeft, ArrowRight, AudioLines, Bot, CalendarDays, Check, KanbanSquare, Mail, PartyPopper, Sparkles, Users } from 'lucide-react'
 import { api } from '../api'
 import CalendarPanel from '../components/CalendarPanel'
 import TeamBoardSettings from '../components/TeamBoardSettings'
 import TrelloConnect from '../components/TrelloConnect'
+import VoicePicker from '../components/VoicePicker'
 import { Badge, Button, Card, ErrorBox, Field, Input, PageHeader, Spinner, Textarea, cx, useLoad } from '../components/ui'
 
 const STEPS = [
   ['meetstream', 'Meeting bot', Bot],
   ['ai', 'AI notes', Sparkles],
+  ['voice', 'Stand-up voice', AudioLines],
   ['team', 'Your team', Users],
   ['board', 'Task board', KanbanSquare],
   ['calendar', 'Calendar', CalendarDays],
@@ -17,6 +19,15 @@ const STEPS = [
   ['done', 'Done', PartyPopper],
 ]
 const link = 'font-bold underline decoration-2 underline-offset-2 hover:bg-accent-soft'
+const AI = [
+  ['gemini', 'Gemini', 'Google · key from aistudio.google.com'],
+  ['anthropic', 'Claude', 'Anthropic · key from console.anthropic.com'],
+  ['openai', 'OpenAI', 'Key from platform.openai.com'],
+  ['xai', 'Grok', 'xAI · key from console.x.ai'],
+]
+const AI_NAME = { gemini: 'Gemini', anthropic: 'Claude', openai: 'OpenAI', xai: 'Grok' }
+const AI_KEY = { gemini: 'GEMINI_API_KEY', anthropic: 'ANTHROPIC_API_KEY', openai: 'OPENAI_API_KEY', xai: 'XAI_API_KEY' }
+const AI_MODEL = { gemini: 'GEMINI_MODEL', anthropic: 'ANALYSIS_MODEL', openai: 'OPENAI_MODEL', xai: 'XAI_MODEL' }
 
 function KeyField({ label, field, keys, value, onChange, placeholder, secret = true, hint }) {
   const k = keys?.[field] || {}
@@ -48,6 +59,7 @@ export default function Setup() {
   const s = status.data
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }))
   const index = STEPS.findIndex(([k]) => k === step)
+  const provider = form.ANALYSIS_PROVIDER || s?.analysis_provider || 'gemini'
   const go = (k) => { setStep(k); setResult(null) }
 
   const saveAndCheck = async (fields, check) => {
@@ -62,7 +74,7 @@ export default function Setup() {
 
   if (!s) return <Spinner />
   const doneFor = {
-    meetstream: s.meetstream, ai: s.analysis, team: s.teams.length > 0 && s.people > 1,
+    meetstream: s.meetstream, ai: s.analysis, voice: s.voice_chosen, team: s.teams.length > 0 && s.people > 1,
     board: s.teams.length > 0, calendar: s.calendar, reports: s.email || s.slack, done: s.done,
   }
 
@@ -94,22 +106,27 @@ export default function Setup() {
 
           {step === 'ai' && <div className="max-w-xl space-y-4">
             <h2 className="text-lg font-bold">Pick the AI that writes the notes</h2>
+            <p className="text-sm text-ink-700">It reads each transcript and writes the summary, decisions, action items and everyone's progress.</p>
             <div className="grid grid-cols-2 gap-2">
-              {[['gemini', 'Gemini', 'Google. Key from aistudio.google.com'], ['anthropic', 'Claude', 'Anthropic. Key from console.anthropic.com']].map(([k, label, hint]) => {
-                const chosen = (form.ANALYSIS_PROVIDER || s.analysis_provider) === k
-                return (
-                  <button key={k} type="button" onClick={() => set('ANALYSIS_PROVIDER')(k)}
-                    className={cx('rounded-md border-2 p-3 text-left text-sm', chosen ? 'border-ink-950 bg-accent shadow-press' : 'border-ink-300 bg-white')}>
-                    <span className="block font-bold">{label}</span><span className="text-xs text-ink-600">{hint}</span>
-                  </button>
-                )
-              })}
+              {AI.map(([k, label, hint]) => (
+                <button key={k} type="button" onClick={() => set('ANALYSIS_PROVIDER')(k)}
+                  className={cx('rounded-md border-2 p-3 text-left text-sm', provider === k ? 'border-ink-950 bg-accent shadow-press' : 'border-ink-300 bg-white')}>
+                  <span className="block font-bold">{label}</span><span className="text-xs text-ink-600">{hint}</span>
+                </button>
+              ))}
             </div>
-            {(form.ANALYSIS_PROVIDER || s.analysis_provider) === 'gemini'
-              ? <KeyField label="Gemini API key" field="GEMINI_API_KEY" keys={s.keys} value={form.GEMINI_API_KEY} onChange={set('GEMINI_API_KEY')} />
-              : <KeyField label="Claude API key" field="ANTHROPIC_API_KEY" keys={s.keys} value={form.ANTHROPIC_API_KEY} onChange={set('ANTHROPIC_API_KEY')} />}
-            <Button loading={busy === 'save'} onClick={() => saveAndCheck(['ANALYSIS_PROVIDER', 'GEMINI_API_KEY', 'ANTHROPIC_API_KEY'], 'analysis')}>Save and check</Button>
+            <KeyField label={`${AI_NAME[provider]} API key`} field={AI_KEY[provider]} keys={s.keys} value={form[AI_KEY[provider]]} onChange={set(AI_KEY[provider])} />
+            <KeyField label="Model" field={AI_MODEL[provider]} secret={false} keys={s.keys} value={form[AI_MODEL[provider]]} onChange={set(AI_MODEL[provider])}
+              placeholder={s.keys?.[AI_MODEL[provider]]?.value || ''} hint="Leave as is unless your key can't use this model." />
+            <Button loading={busy === 'save'} onClick={() => saveAndCheck(['ANALYSIS_PROVIDER', AI_KEY[provider], AI_MODEL[provider]], 'analysis')}>Save and check</Button>
             <Result result={result} />
+          </div>}
+
+          {step === 'voice' && <div className="max-w-2xl space-y-4">
+            <h2 className="text-lg font-bold">Choose the stand-up host's voice</h2>
+            <p className="text-sm text-ink-700">In stand-up mode MeetPact speaks in the meeting: it introduces itself, asks each person for their update and wraps up.
+              Notes and summaries use the AI from the previous step either way.</p>
+            <VoicePicker />
           </div>}
 
           {step === 'team' && <TeamStep teams={s.teams} onSaved={status.reload} />}

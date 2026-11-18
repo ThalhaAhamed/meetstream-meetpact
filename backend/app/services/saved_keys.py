@@ -24,6 +24,12 @@ FIELDS: Dict[str, bool] = {
     "ANALYSIS_PROVIDER": False,
     "GEMINI_API_KEY": True,
     "ANTHROPIC_API_KEY": True,
+    "OPENAI_API_KEY": True,
+    "XAI_API_KEY": True,
+    "GEMINI_MODEL": False,
+    "ANALYSIS_MODEL": False,
+    "OPENAI_MODEL": False,
+    "XAI_MODEL": False,
     "SLACK_WEBHOOK_URL": True,
     "SMTP_HOST": False,
     "SMTP_PORT": False,
@@ -45,8 +51,10 @@ def _env_set(field: str) -> bool:
 
 
 def _in_dotenv(field: str) -> bool:
+    """Set in .env = differs from the built-in default (and wasn't applied by us)."""
     value = getattr(settings, field, None)
-    return value not in (None, "") and not _applied.get(field)
+    default = type(settings).model_fields[field].default
+    return value not in (None, "") and value != default and not _applied.get(field)
 
 
 _applied: Dict[str, bool] = {}

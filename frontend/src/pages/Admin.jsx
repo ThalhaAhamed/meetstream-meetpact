@@ -4,6 +4,7 @@ import { CheckCircle2, CircleDashed, Pencil, Plus, RefreshCw, Trash2 } from 'luc
 import { api } from '../api'
 import TeamBoardSettings from '../components/TeamBoardSettings'
 import TrelloConnect from '../components/TrelloConnect'
+import VoicePicker from '../components/VoicePicker'
 import { useUser, isManager } from '../user'
 import {
   Badge, Button, Card, CardHeader, ErrorBox, Field, Input, Modal, PageHeader, Select, Spinner, Tabs, Textarea, useLoad,
@@ -148,6 +149,10 @@ function SettingsTab() {
             <p className="mt-2 text-xs text-ink-500">Transcription: {env.transcript_provider} · Stand-up voice model: {env.mia_model} · Timezone: {env.timezone}</p>
           </div>
         </Card>
+        {admin && <Card>
+          <CardHeader title="Stand-up voice" subtitle="Who speaks when MeetPact hosts a stand-up" />
+          <div className="p-5"><VoicePicker /></div>
+        </Card>}
         <Card>
           <CardHeader title="Trello" subtitle="Lets teams use a Trello board as their task board" />
           <div className="p-5"><TrelloConnect canEdit={admin} /></div>

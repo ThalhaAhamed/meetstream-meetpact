@@ -128,22 +128,107 @@ def build_prompt(
     )
 
 
+PROVIDERS = ("gemini", "anthropic", "openai", "xai")
+PROVIDER_LABEL = {"gemini": "Gemini", "anthropic": "Claude", "openai": "OpenAI", "xai": "Grok"}
+
+
 def provider() -> str:
     """Which model provider analyses transcripts: ANALYSIS_PROVIDER, else
-    whichever key is configured (Claude preferred when both are)."""
+    the first one with a key (Claude, Gemini, OpenAI, Grok)."""
     choice = (settings.ANALYSIS_PROVIDER or "").lower().strip()
-    if choice in ("anthropic", "claude"):
-        return "anthropic"
-    if choice == "gemini":
-        return "gemini"
-    if settings.GEMINI_API_KEY and not settings.ANTHROPIC_API_KEY:
-        return "gemini"
+    choice = {"claude": "anthropic", "grok": "xai", "chatgpt": "openai"}.get(choice, choice)
+    if choice in PROVIDERS:
+        return choice
+    for name, key in (("anthropic", settings.ANTHROPIC_API_KEY), ("gemini", settings.GEMINI_API_KEY),
+                      ("openai", settings.OPENAI_API_KEY), ("xai", settings.XAI_API_KEY)):
+        if key:
+            return name
     return "anthropic"
 
 
+def provider_key(name: str | None = None) -> str | None:
+    name = name or provider()
+    return {"gemini": settings.GEMINI_API_KEY, "anthropic": settings.ANTHROPIC_API_KEY,
+            "openai": settings.OPENAI_API_KEY, "xai": settings.XAI_API_KEY}.get(name)
+
+
+def provider_model(name: str | None = None) -> str:
+    name = name or provider()
+    return {"gemini": settings.GEMINI_MODEL, "anthropic": settings.ANALYSIS_MODEL,
+            "openai": settings.OPENAI_MODEL, "xai": settings.XAI_MODEL}[name]
+
+
+# OpenAI and xAI share the OpenAI chat-completions shape.
+OPENAI_STYLE = {
+    "openai": ("https://api.openai.com/v1", "OPENAI_API_KEY", "OPENAI_MODEL"),
+    "xai": ("https://api.x.ai/v1", "XAI_API_KEY", "XAI_MODEL"),
+}
+
+
+async def _openai_style(name: str, messages: list, schema: dict | None = None) -> str:
+    base, key_var, model_var = OPENAI_STYLE[name]
+    label, key, model = PROVIDER_LABEL[name], getattr(settings, key_var), getattr(settings, model_var)
+    if not key:
+        raise AnalysisError(f"ANALYSIS_PROVIDER is {name} but {key_var} is not set.")
+    body: dict = {"model": model, "messages": messages}
+    if schema is not None:
+        body["response_format"] = {"type": "json_schema",
+                                   "json_schema": {"name": "meeting_analysis", "schema": schema, "strict": False}}
+    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    resp = None
+    for attempt in range(3):  # retry rate limits and transient server errors
+        try:
+            async with httpx.AsyncClient(timeout=180.0) as client:
+                resp = await client.post(f"{base}/chat/completions", json=body, headers=headers)
+        except httpx.HTTPError as exc:
+            if attempt == 2:
+                raise AnalysisError(f"Could not reach the {label} API. Check the network and reprocess.") from exc
+            await asyncio.sleep(2 * (attempt + 1))
+            continue
+        if resp.status_code in (429, 500, 502, 503, 504) and attempt < 2:
+            await asyncio.sleep(3 * (attempt + 1))
+            continue
+        break
+    if resp.status_code in (401, 403):
+        raise AnalysisError(f"{label} rejected the API key. Check {key_var}.")
+    if resp.status_code == 404:
+        raise AnalysisError(f"{label} model '{model}' was not found. Set {model_var} to a model your key can use.")
+    if resp.status_code == 429:
+        raise AnalysisError(f"{label} rate limit or quota reached. Reprocess the meeting later.")
+    if resp.status_code >= 400:
+        try:
+            msg = (resp.json().get("error") or {}).get("message", "")
+        except (ValueError, AttributeError):
+            msg = resp.text[:200]
+        raise AnalysisError(f"{label} API error {resp.status_code}: {msg}")
+    choices = resp.json().get("choices") or []
+    if not choices:
+        raise AnalysisError(f"{label} returned no answer.")
+    choice = choices[0]
+    if choice.get("finish_reason") == "length":
+        raise AnalysisError("The analysis was cut off (output limit). Try a shorter meeting or split the transcript.")
+    message = choice.get("message") or {}
+    if message.get("refusal"):
+        raise AnalysisError(f"{label} declined to analyse this transcript.")
+    return (message.get("content") or "").strip()
+
+
+async def _analyse_openai_style(name: str, prompt: str) -> MeetingAnalysis:
+    text = await _openai_style(name, [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
+                               MeetingAnalysis.model_json_schema())
+    try:
+        return MeetingAnalysis.model_validate_json(text)
+    except ValidationError as exc:
+        log.warning("%s output failed validation: %s", name, exc)
+        raise AnalysisError(f"{PROVIDER_LABEL[name]} returned an analysis in the wrong shape. Reprocess the meeting.") from exc
+
+
 async def analyse_meeting(prompt: str) -> MeetingAnalysis:
-    if provider() == "gemini":
+    name = provider()
+    if name == "gemini":
         analysis = await _analyse_with_gemini(prompt)
+    elif name in OPENAI_STYLE:
+        analysis = await _analyse_openai_style(name, prompt)
     else:
         analysis = await _analyse_with_claude(prompt)
     return await neutralise_pronouns(analysis)
@@ -310,6 +395,8 @@ async def _analyse_with_claude(prompt: str) -> MeetingAnalysis:
 
 async def complete_text(system: str, prompt: str, max_tokens: int = 4000) -> str:
     """Plain-text answer from the configured provider (used by Ask)."""
+    if provider() in OPENAI_STYLE:
+        return await _openai_style(provider(), [{"role": "system", "content": system}, {"role": "user", "content": prompt}])
     if provider() == "gemini":
         if not settings.GEMINI_API_KEY:
             raise AnalysisError("GEMINI_API_KEY is not set in .env.")

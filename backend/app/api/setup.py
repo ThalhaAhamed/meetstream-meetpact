@@ -1,10 +1,11 @@
 """The setup wizard: what is configured, saving keys, and live checks."""
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -15,7 +16,7 @@ from app.models import Employee, Team, User
 from app.services import saved_keys, trello_board
 from app.services.app_settings import get_setting, set_settings
 from app.services.delivery import email_configured, slack_configured
-from app.services.extraction import provider
+from app.services.extraction import OPENAI_STYLE, PROVIDER_LABEL, provider, provider_key, provider_model
 from app.services.meetstream import MeetStreamError, meetstream
 
 router = APIRouter(prefix="/api/setup", tags=["setup"])
@@ -29,7 +30,9 @@ def status(db: Session = Depends(get_db), _: User = Depends(require_admin)):
         "keys": saved_keys.describe(),
         "meetstream": meetstream.configured,
         "analysis_provider": provider(),
-        "analysis": bool(settings.GEMINI_API_KEY if provider() == "gemini" else settings.ANTHROPIC_API_KEY),
+        "analysis_model": provider_model(),
+        "voice_chosen": bool(get_setting(db, "standup_voice_provider")),
+        "analysis": bool(provider_key()),
         "teams": [{"id": t.id, "name": t.name, "board_source": t.board_source or "native", "board_name": t.board_name}
                   for t in teams],
         "people": db.scalar(select(func.count(Employee.id)).where(Employee.active.is_(True))),
@@ -47,8 +50,8 @@ def save_keys(values: Dict[str, Any], db: Session = Depends(get_db), _: User = D
     unknown = set(values) - set(saved_keys.FIELDS)
     if unknown:
         raise HTTPException(400, f"Unknown setting: {', '.join(sorted(unknown))}")
-    if "ANALYSIS_PROVIDER" in values and values["ANALYSIS_PROVIDER"] not in ("", "gemini", "anthropic"):
-        raise HTTPException(400, "ANALYSIS_PROVIDER must be gemini or anthropic.")
+    if "ANALYSIS_PROVIDER" in values and values["ANALYSIS_PROVIDER"] not in ("", "gemini", "anthropic", "openai", "xai"):
+        raise HTTPException(400, "ANALYSIS_PROVIDER must be gemini, anthropic, openai or xai.")
     try:
         saved_keys.save(db, values)
     except ValueError:
@@ -72,28 +75,71 @@ async def check_meetstream(_: User = Depends(require_admin)):
 
 @router.post("/check/analysis")
 async def check_analysis(_: User = Depends(require_admin)):
+    name = provider()
+    label, key, model = PROVIDER_LABEL[name], provider_key(name), provider_model(name)
+    if not key:
+        raise HTTPException(400, f"Add your {label} API key first.")
     try:
-        if provider() == "gemini":
-            if not settings.GEMINI_API_KEY:
-                raise HTTPException(400, "Add your Gemini API key first.")
-            async with httpx.AsyncClient(timeout=20) as client:
-                r = await client.get("https://generativelanguage.googleapis.com/v1beta/models",
-                                     headers={"x-goog-api-key": settings.GEMINI_API_KEY}, params={"pageSize": 1})
-            if r.status_code >= 400:
-                raise HTTPException(400, "Google rejected the Gemini key." if r.status_code in (400, 401, 403)
-                                    else f"Gemini answered {r.status_code}.")
-            return {"message": f"Gemini is ready ({settings.GEMINI_MODEL})."}
-        if not settings.ANTHROPIC_API_KEY:
-            raise HTTPException(400, "Add your Claude API key first.")
         async with httpx.AsyncClient(timeout=20) as client:
-            r = await client.get("https://api.anthropic.com/v1/models", params={"limit": 1},
-                                 headers={"x-api-key": settings.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01"})
-        if r.status_code >= 400:
-            raise HTTPException(400, "Anthropic rejected the Claude key." if r.status_code in (401, 403)
-                                else f"Anthropic answered {r.status_code}.")
-        return {"message": f"Claude is ready ({settings.ANALYSIS_MODEL})."}
+            if name == "gemini":
+                r = await client.get("https://generativelanguage.googleapis.com/v1beta/models",
+                                     headers={"x-goog-api-key": key}, params={"pageSize": 1000})
+                ids = [m.get("name", "").removeprefix("models/") for m in (r.json().get("models") or [])] if r.status_code == 200 else []
+            elif name == "anthropic":
+                r = await client.get("https://api.anthropic.com/v1/models", params={"limit": 1000},
+                                     headers={"x-api-key": key, "anthropic-version": "2023-06-01"})
+                ids = [m.get("id") for m in (r.json().get("data") or [])] if r.status_code == 200 else []
+            else:
+                r = await client.get(f"{OPENAI_STYLE[name][0]}/models", headers={"Authorization": f"Bearer {key}"})
+                ids = [m.get("id") for m in (r.json().get("data") or [])] if r.status_code == 200 else []
     except httpx.HTTPError:
-        raise HTTPException(502, "Could not reach the AI provider. Check the network.")
+        raise HTTPException(502, f"Could not reach {label}. Check the network.")
+    if r.status_code in (400, 401, 403):
+        raise HTTPException(400, f"{label} rejected the key.")
+    if r.status_code >= 400:
+        raise HTTPException(400, f"{label} answered {r.status_code}.")
+    # Model lists can omit aliases, so a missing model is a hint, not a failure.
+    if ids and model not in ids:
+        close = [i for i in ids if i and model.split("-")[0] in i][:6]
+        return {"message": f"{label} accepted the key, but the model \"{model}\" isn't in its list"
+                           + (f" (try: {', '.join(close)})" if close else "") + ". Change it under Model if analysis fails."}
+    return {"message": f"{label} is ready ({model})."}
+
+
+@router.get("/voices")
+def list_voices(db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    from app.services import voices
+
+    return voices.describe(db)
+
+
+class VoiceChoice(BaseModel):
+    provider: str
+    voice: Optional[str] = None
+
+
+@router.put("/voices")
+def choose_voice(body: VoiceChoice, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    from app.services import voices
+
+    preset = voices.PRESETS.get(body.provider)
+    if not preset:
+        raise HTTPException(400, "Unknown voice provider.")
+    voice = body.voice or preset["default_voice"]
+    if voice not in {v["id"] for v in preset["voices"]} and body.provider != "claude":
+        raise HTTPException(400, "That voice isn't available for this provider.")
+    set_settings(db, {"standup_voice_provider": body.provider, "standup_voice": voice})
+    return voices.describe(db)
+
+
+@router.post("/voices/check")
+async def check_voice(db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    from app.services import voices
+
+    try:
+        return {"message": await voices.check(db)}
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
 
 
 @router.post("/done")

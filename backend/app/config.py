@@ -80,6 +80,12 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-2.5-pro"  # most accurate in testing; gemini-3.8-flash is faster
     ANTHROPIC_API_KEY: Optional[str] = None
+    # OpenAI and xAI (Grok) for the notes, through their OpenAI-style chat API
+    # with JSON-schema output. Set the model to one your key can use.
+    OPENAI_API_KEY: Optional[str] = None
+    OPENAI_MODEL: str = "gpt-5"
+    XAI_API_KEY: Optional[str] = None
+    XAI_MODEL: str = "grok-4"
     ANALYSIS_MODEL: str = "claude-opus-5-5"
     ANALYSIS_EFFORT: str = "high"
 

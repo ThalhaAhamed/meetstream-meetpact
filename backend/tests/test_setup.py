@@ -32,3 +32,20 @@ def test_finish_marks_onboarding_done(client, db, people):
     assert client.get("/api/setup").json()["done"] is False
     client.post("/api/setup/done")
     assert client.get("/api/setup").json()["done"] is True
+
+
+def test_voice_presets_build_valid_mia_configs(client, db, people):
+    from app.services import voices
+
+    login(client, "admin")
+    got = {}
+    for name in ("gemini", "openai", "grok", "claude"):
+        assert client.put("/api/setup/voices", json={"provider": name}).status_code == 200
+        got[name] = voices.model_block(db, "Prompt")
+    assert got["gemini"] == {"mode": "realtime", "model": {"provider": "google", "system_prompt": "Prompt", "voice": "Puck"}}
+    assert got["openai"]["model"] == {"provider": "openai", "system_prompt": "Prompt", "model": "gpt-realtime-mini", "voice": "coral"}
+    assert "model" not in {k for k in got["grok"]["model"] if k == "model"} and got["grok"]["model"]["voice"] == "Ara"
+    assert got["claude"]["mode"] == "pipeline" and got["claude"]["model"]["model"] == "claude-haiku-4-5"
+    assert got["claude"]["voice"]["provider"] == "elevenlabs" and got["claude"]["transcriber"]["provider"] == "deepgram"
+    assert client.put("/api/setup/voices", json={"provider": "grok", "voice": "Nope"}).status_code == 400
+    assert client.put("/api/setup/voices", json={"provider": "grok", "voice": "Rex"}).json()["current"] == {"name": "grok", "voice": "Rex"}

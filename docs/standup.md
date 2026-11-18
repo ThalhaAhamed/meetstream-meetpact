@@ -46,11 +46,24 @@ look up a late joiner's history through the `/mcp` endpoint (`get_person_context
 
 ## Voice providers
 
-The default is **Gemini Live** (`MIA_MODE=realtime`, `MIA_MODEL_PROVIDER=google`, voice `Puck`), which
-a MeetStream account can use without adding its own provider key. Pipeline agents (a transcriber, an
-LLM and a voice, for example Claude + ElevenLabs + Deepgram, or OpenAI) work too, but MeetStream
-rejects them with "API key not configured" until that provider's key has been added to your MeetStream
-account. See [configuration.md](configuration.md#ai-stand-up-host).
+Pick the host's voice under **Admin → Bot & settings → Stand-up voice** (or the setup guide):
+
+| Voice | MeetStream mode | Needs |
+|---|---|---|
+| **Gemini Live** (default) | realtime, provider `google`, voices Puck, Charon, Kore… | nothing extra |
+| **OpenAI** | realtime, provider `openai`, `gpt-realtime-mini`, voices coral, alloy, nova… | your OpenAI key in MeetStream |
+| **Grok** | realtime, provider `xai` (MeetStream picks the model), voices Ara, Eve, Leo, Rex, Sal | your xAI key in MeetStream |
+| **Claude** | pipeline: Deepgram → Claude (`claude-haiku-4-5`) → ElevenLabs voice | Anthropic has no speech-to-speech model, so answers take a little longer |
+
+MeetStream runs these with the provider keys saved in its dashboard (**app.meetstream.ai → Configure →
+Integrations → Models / Voice / Transcription**); there is no documented API to add them, so MeetPact
+links there. **Check with MeetStream** creates a throwaway agent config and deletes it, which tells you
+straight away whether your account can use the voice ("API key not configured for … OpenAI" means
+add the key in the dashboard).
+
+The notes are written by the AI picked under *AI notes* (Gemini, Claude, OpenAI or Grok), independent
+of the voice. Without a choice in the app, the `MIA_*` variables decide, as before
+([configuration.md](configuration.md#ai-stand-up-host)).
 
 ## Limits
 

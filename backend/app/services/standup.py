@@ -172,13 +172,11 @@ def agent_payload(db: Session, meeting: Meeting, mcp_token: str | None) -> Dict[
         functions.append(participants_function(mcp_token))
         functions.append(leave_function(mcp_token))
     first = intro_text(db)
+    from app.services import voices
+
     payload: Dict[str, Any] = {
         "agent_name": f"Standup: {meeting.title}"[:60],
-        "mode": settings.MIA_MODE,
-        "model": {
-            "provider": settings.MIA_MODEL_PROVIDER,
-            "system_prompt": system_prompt(db, meeting, can_leave=bool(functions), live_roster=bool(mcp_servers)),
-        },
+        **voices.model_block(db, system_prompt(db, meeting, can_leave=bool(functions), live_roster=bool(mcp_servers))),
         "agent": {
             # "action" lets the agent call tools (MCP servers and custom functions).
             "response_type": "action" if (mcp_servers or functions) else "voice",
@@ -188,16 +186,6 @@ def agent_payload(db: Session, meeting: Meeting, mcp_token: str | None) -> Dict[
             "enable_interruptions": True,
         },
     }
-    if settings.MIA_MODEL:
-        payload["model"]["model"] = settings.MIA_MODEL
-    if settings.MIA_MODE == "pipeline":
-        payload["voice"] = {"provider": settings.MIA_VOICE_PROVIDER, "voice_id": settings.MIA_VOICE}
-        payload["transcriber"] = {
-            "provider": settings.MIA_TRANSCRIBER_PROVIDER,
-            "model": settings.MIA_TRANSCRIBER_MODEL,
-            "language": "en",
-            "boostwords": [e.name.split()[0] for e in roster(db, meeting)][:20],
-        }
-    else:  # realtime: one speech-to-speech model, voice lives on the model block
-        payload["model"]["voice"] = settings.MIA_VOICE
+    if "transcriber" in payload:  # pipeline: help the transcriber with the team's names
+        payload["transcriber"]["boostwords"] = [e.name.split()[0] for e in roster(db, meeting)][:20]
     return payload

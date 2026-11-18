@@ -17,7 +17,7 @@ from app.db import get_db
 from app.models import Employee, EmployeeProject, MeetingParticipant, Project, Team, User
 from app.services import integrations
 from app.services.app_settings import DEFAULTS, SECRET_KEYS, all_settings, set_settings
-from app.services.extraction import provider
+from app.services.extraction import provider, provider_key, provider_model
 from app.services.meetstream import meetstream
 
 router = APIRouter(prefix="/api", tags=["org"])
@@ -280,8 +280,8 @@ def get_settings(db: Session = Depends(get_db), _: User = Depends(current_user))
         "environment": {
             "meetstream_configured": meetstream.configured,
             "analysis_provider": provider(),
-            "analysis_configured": bool(settings.GEMINI_API_KEY if provider() == "gemini" else settings.ANTHROPIC_API_KEY),
-            "analysis_model": settings.GEMINI_MODEL if provider() == "gemini" else settings.ANALYSIS_MODEL,
+            "analysis_configured": bool(provider_key()),
+            "analysis_model": provider_model(),
             "public_url": settings.public_url,
             "tunnel": __import__("app.services.tunnel", fromlist=["tunnel"]).tunnel.describe(),
             "email_configured": bool(settings.SMTP_HOST and settings.SMTP_FROM),

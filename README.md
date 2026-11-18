@@ -120,8 +120,8 @@ MeetPact opens a tunnel by itself (only MeetStream's paths go through it), which
 the stand-up host sees who is in the call and leaves right after its
 goodbye. Without it the host leaves shortly after everyone else has left.
 
-**Which AI does it use?** Claude or Gemini for analysis and Ask (`ANALYSIS_PROVIDER`). The stand-up
-voice is a MeetStream MIA agent, Gemini Live by default.
+**Which AI does it use?** Your choice of Gemini, Claude, OpenAI or Grok for the notes and Ask. The
+stand-up host's voice is a MeetStream MIA agent: Gemini Live by default, or OpenAI, Grok or Claude.
 
 **Can the bot see who's in the call?** Only with a public address (the automatic tunnel counts):
 MeetStream then sends live join/leave events. Without one, the participant list is only available after

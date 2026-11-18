@@ -25,6 +25,9 @@ DEFAULTS: Dict[str, Any] = {
     "default_share_employee": {"audience": "managers", "user_ids": []},
     # Create task-tool tasks automatically for new AI action items.
     "auto_push_provider": None,
+    # The stand-up host's voice (see services/voices.py). None: MIA_* in .env.
+    "standup_voice_provider": None,
+    "standup_voice": None,
     # Set when an admin finishes (or skips) the setup wizard.
     "onboarding_done": False,
     # Trello connection saved from the app (TRELLO_API_KEY / TRELLO_TOKEN in .env win).

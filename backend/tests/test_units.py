@@ -175,3 +175,40 @@ def test_standup_intro_is_editable(db):
     assert intro_text(db) == "Morning! Notes Bot here. Updates please."
     set_settings(db, {"standup_intro": "Odd {brace"})
     assert intro_text(db) == "Odd {brace"
+
+
+def test_openai_and_grok_analysis(monkeypatch):
+    import asyncio
+    import json
+
+    import httpx
+
+    from app.config import settings
+    from app.services import extraction
+
+    monkeypatch.setattr(settings, "ANALYSIS_PROVIDER", "grok")
+    monkeypatch.setattr(settings, "XAI_API_KEY", "xai-test")
+    assert extraction.provider() == "xai" and extraction.provider_model() == settings.XAI_MODEL
+    sent = {}
+    analysis = {"overview": "They shipped it.", "key_points": [], "decisions": [], "open_questions": [],
+                "action_items": [], "employee_reports": []}
+
+    class Resp:
+        status_code = 200
+
+        def json(self):
+            return {"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(analysis)}}]}
+
+    async def post(self, url, json=None, headers=None):
+        sent.update(url=url, body=json, auth=headers["Authorization"])
+        return Resp()
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", post)
+    out = asyncio.run(extraction.analyse_meeting("transcript"))
+    assert out.overview == "They shipped it."
+    assert sent["url"] == "https://api.x.ai/v1/chat/completions" and sent["auth"] == "Bearer xai-test"
+    assert sent["body"]["response_format"]["type"] == "json_schema"
+    monkeypatch.setattr(settings, "ANALYSIS_PROVIDER", "openai")
+    monkeypatch.setattr(settings, "OPENAI_API_KEY", "sk-test")
+    asyncio.run(extraction.analyse_meeting("transcript"))
+    assert sent["url"] == "https://api.openai.com/v1/chat/completions" and sent["body"]["model"] == settings.OPENAI_MODEL

@@ -60,10 +60,12 @@ who is in the call and leave when it is done. You have three options:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `ANALYSIS_PROVIDER` | auto | `anthropic` or `gemini`. Empty: whichever key is set (Claude if both). |
+| `ANALYSIS_PROVIDER` | auto | `gemini`, `anthropic` (Claude), `openai` or `xai` (Grok). Empty: the first one with a key (Claude, Gemini, OpenAI, Grok). Also set in the setup guide. |
 | `ANALYSIS_MODEL` | `claude-opus-5-5` | Claude model. |
 | `ANALYSIS_EFFORT` | `high` | Claude effort level. |
 | `GEMINI_MODEL` | `gemini-2.5-pro` | Gemini model. `gemini-3.8-flash` is faster. |
+| `OPENAI_API_KEY` / `OPENAI_MODEL` | - / `gpt-5` | OpenAI for the notes (chat completions with JSON-schema output). Use a model your key can call; the setup guide's check lists close matches. |
+| `XAI_API_KEY` / `XAI_MODEL` | - / `grok-4` | Grok (xAI) for the notes, same API shape as OpenAI. |
 
 ## AI stand-up host
 
