@@ -5,9 +5,10 @@ the meeting out loud, from start to finish.
 
 ## How a stand-up runs
 
-1. **Opening.** The host greets everyone, says it is the AI facilitator, that the meeting is recorded
-   and transcribed, and asks whether that is OK. If someone objects it says the organizer can pause or
-   remove it. It then says how the meeting will go and who it will go round.
+1. **Opening.** The host greets everyone, says it is the AI facilitator and how the meeting will go,
+   and starts with the first person. The written recording notice is posted in the meeting chat when
+   the bot is admitted. To have the host also ask out loud whether recording is OK, turn on
+   *AI stand-up asks out loud for recording consent* in Admin → Bot & settings.
 2. **Round.** It calls on each person by name and asks what they completed, what they're working on
    today, what they expect to finish and by when, and whether anything is blocking them. It uses each
    person's carried-over work to follow up specifically ("last time you said the export was nearly
@@ -15,7 +16,7 @@ the meeting out loud, from start to finish.
    skipped; anyone not on the list who speaks up is included.
 3. **Open floor.** "Is there anything else anyone wants to raise before we wrap up?"
 4. **Close.** A short recap of who committed to what (with deadlines) and any blockers, then
-   "If there's nothing else, that's everything for today. Thanks everyone - I'll leave the meeting now."
+   "That's everything for today. Thanks everyone - I'll leave the meeting now."
 5. **Leave.** With `PUBLIC_URL` set, the host calls an `end_meeting` tool and the app removes the bot a
    few seconds after the goodbye. Without a public URL, the bot leaves 60 seconds after everyone else
    has left the call, with a 3-minute silence timeout as a safety net
@@ -33,10 +34,13 @@ roster - the meeting's team, or everyone if no team is set (up to 15 people) - a
 their open work, deadlines, how often items were carried over, open blockers and last update. The
 agent is deleted after the meeting.
 
-The host does **not** see who is actually in the call: MeetStream exposes the participant list only
-after the meeting ends. Choose the right team when scheduling a stand-up. With `PUBLIC_URL` set the
-host can also look people up during the call through MeetPact's `/mcp` endpoint
-(`get_person_context`, `list_standup_roster`).
+**Who is in the call.** MeetStream exposes the participant list only after the meeting, so by
+default the host does not see who joined: it calls on the team, skips people who don't answer and
+includes anyone who speaks up. With `PUBLIC_URL` set, MeetStream sends live join/leave events, and
+the host gets a `list_participants_now` tool: it checks who is present before the round and again
+before the open floor, so it skips absent people and asks late joiners for their update. It can also
+look up a late joiner's history through the `/mcp` endpoint (`get_person_context`). Late joiners
+also see the recording notice: by name with `PUBLIC_URL`, otherwise via a reminder every 10 minutes.
 
 ## Voice providers
 

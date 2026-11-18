@@ -57,7 +57,7 @@ def person_context(db: Session, emp: Employee, meeting: Meeting) -> Dict[str, An
     return ctx
 
 
-def system_prompt(db: Session, meeting: Meeting, can_leave: bool) -> str:
+def system_prompt(db: Session, meeting: Meeting, can_leave: bool, live_roster: bool = False) -> str:
     people = [person_context(db, e, meeting) for e in roster(db, meeting)]
     names = ", ".join(p["name"] for p in people) or "whoever is present"
     leave = (
@@ -65,28 +65,57 @@ def system_prompt(db: Session, meeting: Meeting, can_leave: bool) -> str:
         if can_leave else
         "Then stay completely silent: you will leave the call automatically once everyone has left."
     )
-    return f"""You are {get_setting(db, 'bot_name')}, an AI stand-up facilitator running a live team meeting from start to finish. You speak out loud, so keep every turn short and natural (one or two sentences). You lead: people should never have to tell you what comes next.
+    who = (
+        "Call the list_participants_now tool at the start of the round and again before the open floor. "
+        "Skip expected people who are not in the call, and ask anyone in the call who is not on your list "
+        "for their update too (use get_person_context for their history)."
+        if live_roster else
+        "You cannot see who is in the call. If someone does not answer after a moment, say you will skip them. "
+        "If someone not on the list speaks up, include them."
+    )
+    consent = (
+        "Your first message greeted everyone and asked whether recording is OK. Wait for the answer; if someone "
+        "objects, say the organizer can pause or remove you, and do not argue. Ask this only once."
+        if get_setting(db, "standup_ask_consent") else
+        "Your first message greeted everyone. The organizer has already told people the meeting is recorded, so "
+        "do not ask about recording or consent."
+    )
+    return f"""You are {get_setting(db, 'bot_name')}, an AI stand-up facilitator running a live team meeting from start to finish. You speak out loud, so keep every turn short and natural (one or two sentences). You lead and keep a brisk pace: people should never have to tell you what comes next or ask whether you are still there.
 
 Run the meeting in these phases, in order, exactly once each:
 
-1. OPENING. Your first message has already greeted everyone, said the meeting is recorded and asked if that is OK. Wait for an answer. If someone objects, say the organizer can pause or remove you, and do not argue. Then say briefly how this will go: you will go round each person ({names}), then open the floor, then wrap up.
+1. OPENING. {consent} In one sentence say how this will go: you will go round each person ({names}), then ask if there's anything else, then wrap up. Then start with the first person straight away.
 
 2. ROUND. Go through the people ONE AT A TIME, by name. For each person ask, conversationally:
    - what they completed since the last update,
    - what they are working on today,
    - what they expect to finish and by when,
    - whether anything is blocking them.
-   Use their carried-over context below to follow up specifically, e.g. "Last time you said X was nearly done - did it land?" Ask one short follow-up when an answer is vague (no deadline, unclear status), then move on. Briefly acknowledge each answer and hand over to the next person by name. If someone does not answer after a moment, say you will skip them. If someone not on the list speaks up, include them.
+   You can ask two of these together. Use their carried-over context below to follow up specifically, e.g. "Last time you said X was nearly done - did it land?" Ask at most ONE follow-up per person, only when the status or deadline is unclear; accept whatever they answer (even "not sure yet") and never ask the same thing twice. Briefly acknowledge, then hand over to the next person by name. {who}
 
-3. OPEN FLOOR. Ask: "Is there anything else anyone wants to raise before we wrap up?" Handle anything raised briefly. Ask once more only if something was raised.
+3. OPEN FLOOR. Ask once: "Is there anything else anyone wants to raise before we wrap up?" Handle anything raised briefly.
 
-4. CLOSE. Give a 2-3 sentence recap: who committed to what (with deadlines) and any blockers. Then say: "If there's nothing else, that's everything for today. Thanks everyone - I'll leave the meeting now." {leave}
+4. CLOSE. Give a 2-3 sentence recap: who committed to what (with deadlines) and any blockers. Then say: "That's everything for today. Thanks everyone - I'll leave the meeting now." {leave}
 
-Rules: ask the recording question only once, at the very start. Never restart the meeting or repeat a phase. After the closing line, do not speak again. Never make up facts about people's work, and do not read the context below out verbatim.
+Rules: never restart the meeting or repeat a phase. After the closing line, do not speak again. Never make up facts about people's work, and do not read the context below out verbatim.
 
 People and their carried-over context (JSON):
 {json.dumps(people, indent=1)}
 """
+
+
+def participants_function(mcp_token: str) -> Dict[str, Any]:
+    """Custom function: who is in the call right now, from MeetStream's live
+    participant_events webhooks (only delivered when PUBLIC_URL is set)."""
+    return {
+        "name": "list_participants_now",
+        "description": "List the people currently in the meeting (bots excluded). Call it before the round "
+                       "and before the open floor.",
+        "url": f"{settings.public_url}/api/agent/participants",
+        "method": "POST",
+        "parameters": {"type": "object", "properties": {}, "required": []},
+        "headers": {"Authorization": f"Bearer {mcp_token}"},
+    }
 
 
 def leave_function(mcp_token: str) -> Dict[str, Any]:
@@ -116,17 +145,19 @@ def agent_payload(db: Session, meeting: Meeting, mcp_token: str | None) -> Dict[
             "headers": {"Authorization": f"Bearer {mcp_token}"},
             "allowed_tools": ["get_person_context", "list_standup_roster"],
         })
+        functions.append(participants_function(mcp_token))
         functions.append(leave_function(mcp_token))
     first = (
         f"Hi everyone, I'm {get_setting(db, 'bot_name')}, the AI facilitator for today's stand-up. "
-        "This meeting is recorded and transcribed for progress notes. Is everyone OK with that before we start?"
+        + ("This meeting is recorded and transcribed for progress notes. Is everyone OK with that before we start?"
+           if get_setting(db, "standup_ask_consent") else "Let's get started.")
     )
     payload: Dict[str, Any] = {
         "agent_name": f"Standup: {meeting.title}"[:60],
         "mode": settings.MIA_MODE,
         "model": {
             "provider": settings.MIA_MODEL_PROVIDER,
-            "system_prompt": system_prompt(db, meeting, can_leave=bool(functions)),
+            "system_prompt": system_prompt(db, meeting, can_leave=bool(functions), live_roster=bool(mcp_servers)),
         },
         "agent": {
             # "action" lets the agent call tools (MCP servers and custom functions).

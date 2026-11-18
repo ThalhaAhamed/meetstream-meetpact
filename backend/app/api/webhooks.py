@@ -129,6 +129,8 @@ async def _handle_participant(event: Dict[str, Any]) -> None:
         meeting = db.get(Meeting, meeting_id)
         if action == "join":
             await consent.greet_late_joiners(db, meeting, [name])
+            part, _ = consent.upsert_participant(db, meeting, name)
+            part.last_left_at = None  # a rejoin counts as present again
         elif action == "leave":
             part, _ = consent.upsert_participant(db, meeting, name)
             part.last_left_at = consent.now()

@@ -25,6 +25,9 @@ DEFAULTS: Dict[str, Any] = {
     # (participant webhooks) late joiners cannot be detected live. Instead a short
     # reminder is re-posted this often while recording. 0 turns it off.
     "consent_reminder_minutes": 10,
+    # AI stand-up: the written notice is always posted in the chat; this adds
+    # a spoken "is everyone OK with recording?" before starting.
+    "standup_ask_consent": False,
     "consent_reminder": (
         "Reminder for anyone who just joined: I'm {bot_name}, an AI notetaker, and this meeting is being "
         "recorded and transcribed. Type \"opt out\" in the chat to be left out of the notes."

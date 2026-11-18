@@ -108,6 +108,10 @@ function SettingsTab() {
                 <Input type="number" min="0" disabled={!admin} value={values.transcript_retention_days ?? 0}
                   onChange={(e) => setValues({ ...values, transcript_retention_days: Math.max(0, parseInt(e.target.value || '0', 10)) })} />
               </Field>
+              <label className="flex items-start gap-2 text-sm sm:col-span-2"><input type="checkbox" className="mt-0.5 h-4 w-4 accent-ink-950" disabled={!admin}
+                checked={!!values.standup_ask_consent} onChange={(e) => setValues({ ...values, standup_ask_consent: e.target.checked })} />
+                <span><span className="font-bold">AI stand-up asks out loud for recording consent</span><br />
+                <span className="text-xs text-ink-500">Off: the stand-up host just greets everyone and starts. The written notice is always posted in the chat.</span></span></label>
               <Field label="Recording reminder every (minutes)" hint="Re-posted while recording so late joiners see it. 0 turns it off.">
                 <Input type="number" min="0" disabled={!admin} value={values.consent_reminder_minutes ?? 10}
                   onChange={(e) => setValues({ ...values, consent_reminder_minutes: Math.max(0, parseInt(e.target.value || '0', 10)) })} />

@@ -383,7 +383,7 @@ def test_standup_prompt_asks_consent_once_and_stops():
 
     db = SessionLocal()
     prompt = standup.system_prompt(db, Meeting(title="s", mode="standup"), can_leave=False)
-    assert "only once" in prompt and "anything else" in prompt and "leave the meeting now" in prompt
+    assert "do not ask about recording" in prompt and "anything else" in prompt and "leave the meeting now" in prompt
     assert "stay completely silent" in prompt
 
 
@@ -404,8 +404,8 @@ def test_standup_runs_start_to_finish_and_can_leave(client, db, people, monkeypa
     # With a public URL the agent gets the leave tool.
     monkeypatch.setattr(settings, "PUBLIC_URL", "https://tracker.example.com")
     p = standup.agent_payload(db, m, "tok")
-    fn = p["agent"]["custom_functions"][0]
-    assert fn["name"] == "end_meeting" and fn["url"] == "https://tracker.example.com/api/agent/leave"
+    fn = next(f for f in p["agent"]["custom_functions"] if f["name"] == "end_meeting")
+    assert fn["url"] == "https://tracker.example.com/api/agent/leave"
     assert p["agent"]["response_type"] == "action" and "end_meeting tool" in p["model"]["system_prompt"]
 
     # The leave endpoint: auth required, only for live stand-up bots.
@@ -431,3 +431,40 @@ def test_standup_runs_start_to_finish_and_can_leave(client, db, people, monkeypa
         time.sleep(0.05)
     assert removed == ["bot_su"]
     assert client.post("/api/agent/leave", json={"bot": {"bot_id": "nope"}}, headers={"Authorization": "Bearer tok"}).status_code == 404
+
+
+def test_agent_sees_live_participants_from_webhooks(client, db, people, monkeypatch):
+    """With PUBLIC_URL, join/leave webhooks tell the stand-up agent who is in the call now."""
+    from app.config import settings
+    from app.services import standup
+    from app.services.app_settings import set_settings
+
+    async def send_message(self, bot_id, message):
+        return {}
+
+    monkeypatch.setattr(MeetStreamClient, "send_message", send_message)
+    set_settings(db, {"mcp_token": "tok"})
+    m = Meeting(title="Daily", mode="standup", bot_id="bot_lp", bot_status="in_meeting", consent_notice_sent=True)
+    db.add(m)
+    db.commit()
+    monkeypatch.setattr(settings, "PUBLIC_URL", "https://x.example.com")
+    names = [f["name"] for f in standup.agent_payload(db, m, "tok")["agent"]["custom_functions"]]
+    assert names == ["list_participants_now", "end_meeting"]
+
+    def event(action, name, ts):
+        return {"event": f"participant_events.{action}", "timestamp": ts,
+                "data": {"data": {"action": action, "participant": {"id": name, "name": name}}, "bot": {"id": "bot_lp"}}}
+
+    import time
+    hdr = {"Authorization": "Bearer tok"}
+    call = {"name": "list_participants_now", "bot": {"bot_id": "bot_lp"}, "args": {}}
+    client.post("/api/webhooks/participants", json=event("join", "Sam Okafor", "t1"))
+    client.post("/api/webhooks/participants", json=event("join", "Lena Fischer", "t2"))
+    client.post("/api/webhooks/participants", json=event("leave", "Lena Fischer", "t3"))
+    for _ in range(40):
+        r = client.post("/api/agent/participants", json=call, headers=hdr).json()["result"]
+        if "Sam Okafor" in r and "Lena" not in r:
+            break
+        time.sleep(0.05)
+    assert r == "In the meeting now: Sam Okafor."
+    assert client.post("/api/agent/participants", json=call).status_code == 401
