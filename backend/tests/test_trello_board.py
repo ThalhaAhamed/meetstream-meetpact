@@ -137,3 +137,18 @@ def test_card_pushed_before_is_not_imported_twice(db, trello):
     asyncio.run(tb.sync_team(db, team))
     assert db.query(WorkItem).filter_by(external_id="c2").count() == 1
     assert db.query(WorkItem).filter_by(external_id="c2").one().external_board_id == "B1"
+
+
+def test_older_work_is_not_pushed_as_new_cards(db, trello):
+    fake, team = trello
+    asyncio.run(tb.sync_team(db, team))
+    priya = people_by_name(db, "Priya Raman")
+    old_meeting, m = Meeting(title="Last week", team_id=team.id), Meeting(title="Today", team_id=team.id)
+    db.add_all([old_meeting, m])
+    db.flush()
+    old = WorkItem(title="Old task from last week", employee_id=priya.id, status="in_progress",
+                   created_meeting_id=old_meeting.id, last_meeting_id=m.id)  # carried over today
+    db.add(old)
+    db.commit()
+    assert asyncio.run(tb.push_meeting_changes(db, m))["cards"] == 0
+    assert not any(c[0] == "POST" for c in fake.calls)

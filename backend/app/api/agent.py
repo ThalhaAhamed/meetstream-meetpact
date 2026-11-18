@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db, session_scope
 from app.models import Meeting
 from app.services.app_settings import get_setting
-from app.services.meetstream import LIVE_STATES, MeetStreamError, meetstream
+from app.services.meetstream import NotReady, LIVE_STATES, MeetStreamError, meetstream
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/agent", tags=["agent"])
@@ -37,12 +37,14 @@ async def _leave_later(meeting_id: str, bot_id: str, reason: str) -> None:
     await asyncio.sleep(LEAVE_DELAY_SECONDS)
     try:
         await meetstream.remove_bot(bot_id)
+    except NotReady:
+        pass  # 202: MeetStream accepted the request and the bot is leaving
     except MeetStreamError as exc:
         log.warning("Agent-requested leave failed for %s: %s", meeting_id, exc)
         return
     with session_scope() as db:
         m = db.get(Meeting, meeting_id)
-        if m and not m.stop_reason:
+        if m and (not m.stop_reason or m.stop_reason == "The bot left normally."):
             m.stop_reason = f"The stand-up agent closed the meeting ({reason})."
 
 

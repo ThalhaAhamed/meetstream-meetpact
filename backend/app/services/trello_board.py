@@ -289,8 +289,10 @@ async def move_card(db: Session, item: WorkItem, team: Team, status: str) -> boo
 
 
 async def push_meeting_changes(db: Session, meeting) -> Dict[str, int]:
-    """After a meeting's analysis: new work for Trello teams becomes cards, and
-    status changes move cards. Failures are logged, never raised."""
+    """After a meeting's analysis: work first raised in this meeting becomes
+    cards, and status changes move existing cards. Older work that was never on
+    the board is left alone (it would flood the board with history). Failures
+    are logged, never raised."""
     stats = {"cards": 0, "moved": 0}
     items = db.scalars(select(WorkItem).where(
         (WorkItem.created_meeting_id == meeting.id) | (WorkItem.last_meeting_id == meeting.id))).all()
@@ -300,6 +302,8 @@ async def push_meeting_changes(db: Session, meeting) -> Dict[str, int]:
             continue
         try:
             if not item.external_id:
+                if item.created_meeting_id != meeting.id:
+                    continue
                 await create_card(db, item, team)
                 stats["cards"] += 1
             elif item.external_provider == "trello" and item.external_board_id == team.board_id:
