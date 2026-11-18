@@ -174,9 +174,21 @@ def _find_duplicate(items: List[WorkItem], title: str) -> Optional[WorkItem]:
     return best if score >= 0.82 else None
 
 
-def apply_analysis(db: Session, meeting: Meeting, analysis: MeetingAnalysis) -> Dict[str, int]:
-    """Write updates, work items and blockers. Returns counters for the log."""
-    stats = {"updates": 0, "items_created": 0, "items_updated": 0, "carried_over": 0, "blockers": 0}
+def apply_analysis(db: Session, meeting: Meeting, analysis: MeetingAnalysis,
+                   update_board: Optional[bool] = None) -> Dict[str, int]:
+    """Write updates, work items and blockers. Returns counters for the log.
+
+    By default meetings only add knowledge: each person's update, blockers,
+    and a "mentioned" note on work items that came up. People manage the board.
+    With the "board_from_meetings" setting (or update_board=True) the meeting
+    also creates work items, changes their status and deadlines, and carries
+    unfinished work forward."""
+    from app.services.app_settings import get_setting
+
+    if update_board is None:
+        update_board = bool(get_setting(db, "board_from_meetings"))
+    stats = {"updates": 0, "items_created": 0, "items_updated": 0, "carried_over": 0, "blockers": 0,
+             "mentions": 0}
     employees = identity.active_employees(db)
     by_id = {e.id: e for e in employees}
 
@@ -217,6 +229,23 @@ def apply_analysis(db: Session, meeting: Meeting, analysis: MeetingAnalysis) -> 
             )
         )
         stats["updates"] += 1
+
+        if not update_board:
+            # Knowledge only: note on each discussed item what was said, change nothing.
+            current = {w.id: w for w in open_items(db, emp.id)}
+            for upd in rep.existing_item_updates:
+                item = current.get(upd.work_item_id)
+                if item is None:
+                    continue
+                said = upd.note or ""
+                if upd.new_status != "unchanged":
+                    said = f"{said} (reported as {upd.new_status.replace('_', ' ')})".strip()
+                if upd.due_date:
+                    said = f"{said} (deadline mentioned: {upd.due_date[:10]})".strip()
+                _event(db, item, "mentioned", meeting, said or "Discussed in the meeting")
+                stats["mentions"] += 1
+            _record_blockers(db, emp, rep, meeting, stats)
+            continue
 
         current = {w.id: w for w in open_items(db, emp.id)}
         for upd in rep.existing_item_updates:
@@ -296,24 +325,11 @@ def apply_analysis(db: Session, meeting: Meeting, analysis: MeetingAnalysis) -> 
             touched_items.add(item.id)
             stats["items_created"] += 1
 
-        # Blockers
-        existing = open_blockers(db, emp.id)
-        for bid in rep.resolved_blocker_ids:
-            b = next((x for x in existing if x.id == bid), None)
-            if b:
-                b.status = "resolved"
-                b.resolved_meeting_id = meeting.id
-                b.resolved_at = datetime.now(timezone.utc)
-        for text in rep.blockers:
-            match = next((b for b in existing if b.status == "open" and _similar(b.description, text) >= 0.7), None)
-            if match:
-                if match.raised_meeting_id != meeting.id and match.last_meeting_id != meeting.id:
-                    match.mention_count += 1
-                    match.last_meeting_id = meeting.id
-                continue
-            db.add(Blocker(employee_id=emp.id, project_id=meeting.project_id, description=text,
-                           raised_meeting_id=meeting.id, last_meeting_id=meeting.id))
-            stats["blockers"] += 1
+        _record_blockers(db, emp, rep, meeting, stats)
+
+    if not update_board:
+        db.flush()
+        return stats
 
     # Action items not already captured as someone's work item.
     for ai in analysis.action_items:
@@ -349,3 +365,23 @@ def apply_analysis(db: Session, meeting: Meeting, analysis: MeetingAnalysis) -> 
 
     db.flush()
     return stats
+
+
+def _record_blockers(db: Session, emp: Employee, rep, meeting: Meeting, stats: Dict[str, int]) -> None:
+    existing = open_blockers(db, emp.id)
+    for bid in rep.resolved_blocker_ids:
+        b = next((x for x in existing if x.id == bid), None)
+        if b:
+            b.status = "resolved"
+            b.resolved_meeting_id = meeting.id
+            b.resolved_at = datetime.now(timezone.utc)
+    for text in rep.blockers:
+        match = next((b for b in existing if b.status == "open" and _similar(b.description, text) >= 0.7), None)
+        if match:
+            if match.raised_meeting_id != meeting.id and match.last_meeting_id != meeting.id:
+                match.mention_count += 1
+                match.last_meeting_id = meeting.id
+            continue
+        db.add(Blocker(employee_id=emp.id, project_id=meeting.project_id, description=text,
+                       raised_meeting_id=meeting.id, last_meeting_id=meeting.id))
+        stats["blockers"] += 1

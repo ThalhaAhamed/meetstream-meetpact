@@ -133,8 +133,8 @@ export default function Setup() {
 
           {step === 'board' && <div className="space-y-4">
             <h2 className="text-lg font-bold">Where does each team keep its tasks?</h2>
-            <p className="text-sm text-ink-700">Use MeetPact's own board, or a team's existing Trello board: MeetPact shows it, knows who is on each card,
-              adds new tasks from meetings and moves cards when people report progress.</p>
+            <p className="text-sm text-ink-700">Use MeetPact's own board, or a team's existing Trello board shown inside MeetPact with who is on each card.
+              People manage the board; meetings add what was said to each person's updates, and the stand-up host asks about the open tasks.</p>
             <div className="max-w-xl rounded-md border-2 border-ink-950 p-3"><p className="mb-2 text-xs font-bold">Trello (only needed for Trello boards)</p>
               <TrelloConnect onChange={status.reload} /></div>
             {s.teams.length ? s.teams.map((t) => (

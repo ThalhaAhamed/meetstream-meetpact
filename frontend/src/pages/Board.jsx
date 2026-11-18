@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Repeat } from 'lucide-react'
+import { Plus, Repeat } from 'lucide-react'
 import { api } from '../api'
 import TrelloBoard from '../components/TrelloBoard'
 import WorkItemModal from '../components/WorkItemModal'
-import { Avatar, Badge, ErrorBox, PageHeader, Select, Spinner, cx, fmtDate, useLoad } from '../components/ui'
+import { Avatar, Badge, Button, ErrorBox, Field, Input, Modal, PageHeader, Select, Spinner, cx, fmtDate, useLoad } from '../components/ui'
 import { useUser, isManager } from '../user'
 
 const COLUMNS = [
@@ -22,6 +22,16 @@ export default function Board() {
   const [over, setOver] = useState(null)
   const [openItem, setOpenItem] = useState(null)
   const [error, setError] = useState(null)
+  const [draft, setDraft] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const saveDraft = async () => {
+    setSaving(true); setError(null)
+    try {
+      await api.createWorkItem({ title: draft.title.trim(), employee_id: draft.employee_id || null, project_id: draft.project_id || null,
+        status: draft.status, due_date: draft.due_date || null })
+      setDraft(null); items.reload()
+    } catch (e) { setError(e) } finally { setSaving(false) }
+  }
   const items = useLoad(() => api.workItems({ employee_id: person || undefined, project_id: project || undefined }), [person, project])
   const people = useLoad(() => api.employees(), [])
   const projects = useLoad(() => api.projects(), [])
@@ -51,13 +61,14 @@ export default function Board() {
 
   return (
     <>
-      <PageHeader title="Work board" subtitle={onTrello ? `${team.name} keeps its tasks on Trello. Drag a card to move it there.` : 'Everything people committed to in meetings. Drag a card to change its status.'}
+      <PageHeader title="Work board" subtitle={onTrello ? `${team.name} keeps its tasks on Trello. Drag a card to move it there.` : "Your team's tasks. Add a task, click to edit, drag to change its status."}
         actions={<>
           <Select value={teamId} onChange={(e) => pickTeam(e.target.value)} className="w-52" aria-label="Team">
             <option value="">All teams</option>
             {(teams.data || []).map((t) => <option key={t.id} value={t.id}>{t.name}{t.board_source === 'trello' ? ' · Trello' : ''}</option>)}
           </Select>
           {!onTrello && <>
+          <Button icon={Plus} onClick={() => setDraft({ title: '', employee_id: person || (isManager(user) ? '' : user.employee_id || ''), project_id: project, status: 'planned', due_date: '' })}>New task</Button>
           <Select value={person} onChange={(e) => setPerson(e.target.value)} className="w-44">
             <option value="">Everyone</option>
             {(people.data || []).filter((e) => e.active).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
@@ -101,6 +112,28 @@ export default function Board() {
           ))}
         </div>
       )}
+      <Modal open={!!draft} onClose={() => setDraft(null)} title="New task"
+        footer={<><Button variant="secondary" onClick={() => setDraft(null)}>Cancel</Button>
+          <Button loading={saving} disabled={!draft?.title?.trim()} onClick={saveDraft}>Add task</Button></>}>
+        {draft && <>
+          <Field label="Task"><Input autoFocus value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Review the Trace blog post" /></Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Who"><Select value={draft.employee_id} disabled={!isManager(user)} onChange={(e) => setDraft({ ...draft, employee_id: e.target.value })}>
+              <option value="">Nobody yet</option>
+              {(people.data || []).filter((e) => e.active && (!teamId || e.team_id === teamId)).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </Select></Field>
+            <Field label="Project"><Select value={draft.project_id} onChange={(e) => setDraft({ ...draft, project_id: e.target.value })}>
+              <option value="">None</option>
+              {(projects.data || []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </Select></Field>
+            <Field label="Status"><Select value={draft.status} onChange={(e) => setDraft({ ...draft, status: e.target.value })}>
+              {COLUMNS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+            </Select></Field>
+            <Field label="Due"><Input type="date" value={draft.due_date} onChange={(e) => setDraft({ ...draft, due_date: e.target.value })} /></Field>
+          </div>
+          <ErrorBox error={error} />
+        </>}
+      </Modal>
       <WorkItemModal itemId={openItem} onClose={() => setOpenItem(null)} onSaved={items.reload}
         canEdit={!!openItem && (isManager(user) || (items.data || []).find((w) => w.id === openItem)?.employee_id === user.employee_id)} />
       </>}

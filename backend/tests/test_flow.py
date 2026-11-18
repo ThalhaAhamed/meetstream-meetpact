@@ -394,3 +394,30 @@ def test_agent_sees_live_participants_from_webhooks(client, db, people, monkeypa
     assert r.startswith("Joined since you arrived: Sam Okafor. Left the call: Lena Fischer.")
     assert "never mention" in r
     assert client.post("/api/agent/participants", json=call).status_code == 401
+
+
+def test_default_meetings_only_add_knowledge(db, people):
+    """People manage the board: a meeting records the update, blockers and a note
+    on discussed tasks, but creates, moves and carries over nothing."""
+    from app.models import Blocker, WorkItemEvent
+    from app.services.app_settings import set_settings
+    from app.services.extraction import ExistingItemUpdate
+
+    set_settings(db, {"board_from_meetings": False})
+    priya = people["emps"]["lead"]
+    task = tracker.create_item(db, employee_id=priya.id, title="Build export API", status="planned", meeting=None)
+    m = _meeting(db, "general")
+    db.commit()
+    rep = _report(priya, completed=["Build export API", "Write docs"], new_work_items=[
+        NewWorkItem(title="Write docs", status="planned", due_date=None, project=None)],
+        existing_item_updates=[ExistingItemUpdate(work_item_id=task.id, new_status="completed", note="Shipped it", due_date=None)])
+    rep.blockers = ["Waiting for API keys"]
+    stats = tracker.apply_analysis(db, m, _analysis(rep))
+    db.commit()
+    assert stats["updates"] == 1 and stats["items_created"] == 0 and stats["mentions"] == 1
+    assert db.get(WorkItem, task.id).status == "planned"  # unchanged: a person moves it
+    assert db.query(WorkItem).count() == 1
+    note = db.query(WorkItemEvent).filter_by(work_item_id=task.id, kind="mentioned").one().note
+    assert "Shipped it" in note and "reported as completed" in note
+    assert db.query(EmployeeUpdate).filter_by(meeting_id=m.id).one().completed == ["Build export API", "Write docs"]
+    assert db.query(Blocker).filter_by(employee_id=priya.id, status="open").count() == 1

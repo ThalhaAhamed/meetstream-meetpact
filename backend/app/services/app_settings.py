@@ -25,6 +25,9 @@ DEFAULTS: Dict[str, Any] = {
     "default_share_employee": {"audience": "managers", "user_ids": []},
     # Create task-tool tasks automatically for new AI action items.
     "auto_push_provider": None,
+    # Off (default): meetings only add knowledge (updates, blockers, notes on
+    # tasks); people manage the board. On: meetings also create and move tasks.
+    "board_from_meetings": False,
     # The stand-up host's voice (see services/voices.py). None: MIA_* in .env.
     "standup_voice_provider": None,
     "standup_voice": None,

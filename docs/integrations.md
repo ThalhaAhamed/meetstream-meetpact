@@ -65,8 +65,9 @@ Then, for that team:
 * Every open card is also a work item, so dashboards, reports, Ask and the person pages include them.
   The board syncs every `INTEGRATION_SYNC_MINUTES`, when it is opened, before a meeting is analysed
   and before a stand-up starts.
-* New work from that team's meetings becomes cards in the first *To do* list (assigned to the person when
-  they're matched); work reported as done or in progress moves its card to the matching list.
+* People manage the cards. Only with **Admin → Let meetings update the board** on does new work from that
+  team's meetings become cards in the first *To do* list, and work reported as done or in progress move its
+  card to the matching list. With it off (the default) the meeting's updates are kept as knowledge.
 * The AI stand-up host gets the open cards and who owns them: it asks people about their own cards and
   raises overdue or unassigned ones before wrapping up.
 

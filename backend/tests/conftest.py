@@ -27,6 +27,10 @@ def fresh_db():
 @pytest.fixture
 def db():
     s = SessionLocal()
+    # Most tests exercise the "meetings update the board" mode; the default
+    # (knowledge only) has its own test.
+    from app.services.app_settings import set_settings
+    set_settings(s, {"board_from_meetings": True})
     yield s
     s.close()
 

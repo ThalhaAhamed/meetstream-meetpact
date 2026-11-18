@@ -294,6 +294,10 @@ async def push_meeting_changes(db: Session, meeting) -> Dict[str, int]:
     the board is left alone (it would flood the board with history). Failures
     are logged, never raised."""
     stats = {"cards": 0, "moved": 0}
+    from app.services.app_settings import get_setting
+
+    if not get_setting(db, "board_from_meetings"):
+        return stats  # people manage the board
     items = db.scalars(select(WorkItem).where(
         (WorkItem.created_meeting_id == meeting.id) | (WorkItem.last_meeting_id == meeting.id))).all()
     for item in items:

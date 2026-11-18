@@ -309,7 +309,7 @@ def main(reset: bool) -> None:
                 db.flush()
                 db.refresh(m)
                 analysis = build_analysis(db, m, slot_story, employees)
-                stats = tracker.apply_analysis(db, m, analysis)
+                stats = tracker.apply_analysis(db, m, analysis, update_board=True)
                 data = analysis.model_dump()
                 data["stats"] = stats
                 m.summary = data

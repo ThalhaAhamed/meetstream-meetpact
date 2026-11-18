@@ -100,6 +100,12 @@ function SettingsTab() {
               <Field label="Default employee-update audience"><Select disabled={!admin} value={values.default_share_employee.audience} onChange={(e) => setValues({ ...values, default_share_employee: { audience: e.target.value, user_ids: [] } })}>
                 <option value="organizer">Only the organizer</option><option value="participants">All participants</option><option value="managers">Managers and team leads</option></Select></Field>
             </div>
+            <label className="flex items-start gap-2 rounded-md border-2 border-ink-950/15 p-3 text-sm">
+              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-ink-950" disabled={!admin}
+                checked={!!values.board_from_meetings} onChange={(e) => setValues({ ...values, board_from_meetings: e.target.checked })} />
+              <span><span className="font-bold">Let meetings update the board</span><br />
+                <span className="text-xs text-ink-600">Off: meetings only add knowledge (each person's update, blockers, notes on the tasks that came up) and people manage the board. On: meetings also create tasks, move them and carry unfinished work forward.</span></span>
+            </label>
             <Field label="Create tasks automatically in" hint="New action items and commitments from each meeting are pushed to this tool.">
               <Select disabled={!admin} value={values.auto_push_provider || ''} onChange={(e) => setValues({ ...values, auto_push_provider: e.target.value || null })}>
                 <option value="">Off - push items by hand</option>
