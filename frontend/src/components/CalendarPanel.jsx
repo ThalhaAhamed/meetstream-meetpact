@@ -8,7 +8,7 @@ import { Badge, BotStatus, Button, Card, CardHeader, Empty, ErrorBox, Field, Inp
 const split = (s) => s.split(',').map((x) => x.trim()).filter(Boolean)
 
 // Calendar auto-join: connect through MeetStream, pick which meetings the bot joins.
-export default function CalendarPanel() {
+export default function CalendarPanel({ returnTo = '/schedules', className = 'mt-6' }) {
   const user = useUser()
   const status = useLoad(() => api.calendar(), [])
   const connected = status.data?.connected
@@ -30,13 +30,13 @@ export default function CalendarPanel() {
   const s = status.data
 
   return (
-    <Card className="mt-6">
+    <Card className={className}>
       <CardHeader title="Calendar auto-join" icon={CalendarDays}
         subtitle={connected ? `Connected: ${s.account}` : 'Connect Google or Outlook so the bot joins calendar meetings without pasting links'}
         action={user.role === 'admin' && (connected
           ? <Button size="sm" variant="ghost" icon={Unlink} loading={busy === 'dc'} onClick={() => window.confirm('Disconnect the calendar? MeetStream deletes the synced events and cancels calendar bots.') && act('dc', api.disconnectCalendar)}>Disconnect</Button>
           : s?.google_sign_in
-            ? <a href="/api/calendar/google/start" className="inline-flex items-center gap-1.5 rounded-md border-2 border-ink-950 bg-accent px-2.5 py-1 text-xs font-bold text-ink-950 shadow-press hover:-translate-x-px hover:-translate-y-px hover:shadow-card"><Link2 className="h-3.5 w-3.5" />Connect Google Calendar</a>
+            ? <a href={`/api/calendar/google/start?next=${encodeURIComponent(returnTo)}`} className="inline-flex items-center gap-1.5 rounded-md border-2 border-ink-950 bg-accent px-2.5 py-1 text-xs font-bold text-ink-950 shadow-press hover:-translate-x-px hover:-translate-y-px hover:shadow-card"><Link2 className="h-3.5 w-3.5" />Connect Google Calendar</a>
             : <Button size="sm" icon={Link2} onClick={() => setConnect({ provider: 'google', client_id: '', client_secret: '', refresh_token: '' })}>Connect calendar</Button>)} />
       <div className="space-y-4 p-5">
         <ErrorBox error={error || events.error || signInError} />

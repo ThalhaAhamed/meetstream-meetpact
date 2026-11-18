@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import agent, auth_routes, boards, calendar, knowledge, mcp, meetings, org, progress, webhooks
+from app.api import agent, auth_routes, boards, calendar, knowledge, mcp, meetings, org, progress, setup, webhooks
 from app.config import REPO_DIR, settings
 from app.db import init_db
 from app.services.tunnel import allowed_through_tunnel, tunnel, via_tunnel
@@ -39,6 +39,11 @@ async def _integration_loop():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    from app.db import session_scope
+    from app.services import saved_keys
+
+    with session_scope() as db:
+        saved_keys.apply(db)  # keys entered in the setup wizard
     tasks = []
     if settings.BACKGROUND_WORKERS:
         from app.services.workers import start_workers
@@ -75,7 +80,7 @@ async def tunnel_guard(request: Request, call_next):
 
 
 for r in (auth_routes.router, org.router, meetings.router, progress.router, calendar.router, knowledge.router,
-          agent.router, webhooks.router, mcp.router, boards.router):
+          agent.router, webhooks.router, mcp.router, boards.router, setup.router):
     app.include_router(r)
 
 

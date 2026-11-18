@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { api } from './api'
 import { UserContext, isManager } from './user'
 import AppShell from './components/AppShell'
@@ -17,19 +17,32 @@ import Reports from './pages/Reports'
 import Admin from './pages/Admin'
 import Board from './pages/Board'
 import Ask from './pages/Ask'
+import Setup from './pages/Setup'
 
 export default function App() {
   const [state, setState] = useState({ loading: true, needsSetup: false, user: null })
 
   useEffect(() => {
-    api.authState()
-      .then((s) => setState({ loading: false, needsSetup: s.needs_setup, user: s.user }))
-      .catch(() => setState({ loading: false, needsSetup: false, user: null }))
+    // If the server is restarting, keep retrying instead of showing the sign-in page.
+    let stop = false
+    const load = (attempt = 0) => api.authState()
+      .then((s) => !stop && setState({ loading: false, needsSetup: s.needs_setup, user: s.user }))
+      .catch(() => {
+        if (stop) return
+        if (attempt < 20) { setState((s) => ({ ...s, offline: attempt >= 1 })); setTimeout(() => load(attempt + 1), 1500) }
+        else setState({ loading: false, needsSetup: false, user: null })
+      })
+    load()
+    return () => { stop = true }
   }, [])
 
-  const setUser = (user) => setState((s) => ({ ...s, user, needsSetup: false }))
+  const navigate = useNavigate()
+  const setUser = (user) => {
+    if (state.needsSetup && user) navigate('/setup')  // the first admin goes straight to the setup guide
+    setState((s) => ({ ...s, user, needsSetup: false }))
+  }
 
-  if (state.loading) return <Spinner inline />
+  if (state.loading) return <Spinner inline label={state.offline ? 'Reconnecting to the MeetPact server…' : 'Loading…'} />
   if (!state.user) return <SignIn needsSetup={state.needsSetup} onSignedIn={setUser} />
 
   const home = isManager(state.user) ? <Dashboard /> : <MyProgress />
@@ -50,6 +63,7 @@ export default function App() {
           <Route path="/admin" element={<Admin />} />
           <Route path="/board" element={<Board />} />
           <Route path="/ask" element={<Ask />} />
+          <Route path="/setup" element={state.user.role === 'admin' ? <Setup /> : <Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AppShell>

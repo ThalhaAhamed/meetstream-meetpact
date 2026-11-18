@@ -89,12 +89,13 @@ def _state_signer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(secret_key(), salt="meetpact-google-oauth")
 
 
-def _back_to_app(**query: str) -> RedirectResponse:
-    return RedirectResponse(f"{settings.APP_URL.rstrip('/')}/schedules?{urlencode(query)}", status_code=303)
+def _back_to_app(path: str = "/schedules", **query: str) -> RedirectResponse:
+    path = path if path in ("/schedules", "/setup") else "/schedules"
+    return RedirectResponse(f"{settings.APP_URL.rstrip('/')}{path}?{urlencode(query)}", status_code=303)
 
 
 @router.get("/google/start")
-def google_start(admin: User = Depends(require_admin)):
+def google_start(next: str = "/schedules", admin: User = Depends(require_admin)):
     if not google_sign_in_ready():
         raise HTTPException(400, "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env first.")
     params = {
@@ -105,7 +106,7 @@ def google_start(admin: User = Depends(require_admin)):
         "access_type": "offline",
         "prompt": "consent",  # always return a refresh token
         "include_granted_scopes": "true",
-        "state": _state_signer().dumps(admin.id),
+        "state": _state_signer().dumps({"u": admin.id, "n": next if next in ("/schedules", "/setup") else "/schedules"}),
     }
     return RedirectResponse("https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params), status_code=303)
 
@@ -113,13 +114,15 @@ def google_start(admin: User = Depends(require_admin)):
 @router.get("/google/callback")
 async def google_callback(code: str = "", state: str = "", error: str = "", db: Session = Depends(get_db),
                           admin: User = Depends(require_admin)):
-    if error:
-        return _back_to_app(calendar_error=f"Google sign-in was cancelled ({error}).")
     try:
-        if _state_signer().loads(state, max_age=STATE_MAX_AGE) != admin.id:
+        signed = _state_signer().loads(state, max_age=STATE_MAX_AGE)
+        if not isinstance(signed, dict) or signed.get("u") != admin.id:
             raise BadSignature("different user")
     except BadSignature:
         return _back_to_app(calendar_error="The sign-in link expired. Try again.")
+    back = signed.get("n") or "/schedules"
+    if error:
+        return _back_to_app(back, calendar_error=f"Google sign-in was cancelled ({error}).")
     try:
         async with httpx.AsyncClient(timeout=20) as client:
             resp = await client.post("https://oauth2.googleapis.com/token", data={
@@ -127,18 +130,18 @@ async def google_callback(code: str = "", state: str = "", error: str = "", db: 
                 "redirect_uri": google_redirect_uri(), "grant_type": "authorization_code",
             })
     except httpx.HTTPError:
-        return _back_to_app(calendar_error="Could not reach Google. Try again.")
+        return _back_to_app(back, calendar_error="Could not reach Google. Try again.")
     token = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
     refresh = token.get("refresh_token")
     if resp.status_code != 200 or not refresh:
         detail = token.get("error_description") or token.get("error") or f"HTTP {resp.status_code}"
-        return _back_to_app(calendar_error=f"Google did not return a refresh token: {detail}")
+        return _back_to_app(back, calendar_error=f"Google did not return a refresh token: {detail}")
     try:
         await connect(ConnectBody(provider="google", client_id=settings.GOOGLE_CLIENT_ID,
                                   client_secret=settings.GOOGLE_CLIENT_SECRET, refresh_token=refresh), db, admin)
     except HTTPException as exc:
-        return _back_to_app(calendar_error=str(exc.detail))
-    return _back_to_app(calendar="connected")
+        return _back_to_app(back, calendar_error=str(exc.detail))
+    return _back_to_app(back, calendar="connected")
 
 
 @router.delete("")

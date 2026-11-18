@@ -35,11 +35,12 @@ It is self-hosted: clone it, add a MeetStream key and a Claude or Gemini key, an
 ```bash
 git clone https://github.com/ThalhaAhamed/meetpact.git
 cd meetpact
-cp .env.example .env        # add MEETSTREAM_API_KEY and ANTHROPIC_API_KEY or GEMINI_API_KEY
+cp .env.example .env        # optional: you can also enter every key in the setup guide
 docker compose up --build   # → http://localhost:8000
 ```
 
-The first account you create becomes the admin. Without Docker (Python 3.12+, Node 22+):
+The first account you create becomes the admin, and a **setup guide** walks through the rest: the
+MeetStream key, the AI for notes, your team, its task board (MeetPact or Trello), calendar and reports. Without Docker (Python 3.12+, Node 22+):
 
 ```bash
 cd backend && python -m venv .venv && .venv/bin/pip install -r requirements.txt
@@ -59,14 +60,15 @@ Everything is in [docs/configuration.md](docs/configuration.md).
 ## ✨ Features
 
 - 🎙️ **AI notetaker** - joins on demand, on a schedule, or from your calendar. Posts one short recording note once admitted, and can be paused or removed from the meeting page.
-- 🧑‍✈️ **AI stand-up host** - opens the meeting, goes round each person by name, follows up on what they committed to last time, opens the floor ("anything else?"), recaps, and leaves. Powered by MeetStream's voice agents (Gemini Live by default).
+- 🧑‍✈️ **AI stand-up host** - introduces itself ("tell me what you worked on, any updates and your status"), knows the team's open cards and who owns them, goes round each person by name, follows up on what they committed to last time, opens the floor ("anything else?"), recaps, and leaves. Powered by MeetStream's voice agents (Gemini Live by default).
 - 📈 **Progress across meetings** - every update moves long-lived work items (planned → in progress → blocked → done). Unfinished work is carried forward; blockers stay open until someone says they're resolved; every change has a history with the meeting it came from.
 - 🚨 **Needs your attention** - the manager dashboard leads with overdue work, open blockers and work that keeps slipping.
-- 🗂️ **Work board** - every commitment as a drag-and-drop board, by person or project.
+- 🗂️ **Work board, or your Trello board** - each team keeps its tasks on MeetPact's drag-and-drop board or on its own Trello board. A Trello board shows inside MeetPact with who is on each card; new tasks from meetings become cards, and cards move when people report progress.
 - 🔎 **Ask & search** - "What is blocking the team?", "What did Priya commit to?" Answers cite the meeting and date and only use records you're allowed to see. <kbd>Ctrl</kbd>+<kbd>K</kbd> jumps anywhere.
 - ✅ **People correct the AI** - everyone can confirm or correct what was recorded about them.
 - 🔐 **Sharing and privacy** - per meeting, choose who sees the full report and who sees individual updates. Roles for admins, managers, team leads and employees. Automatic deletion of transcripts and recordings, and "erase all data" per person.
-- 📤 **Delivery and integrations** - reports by email and Slack; optional ClickUp, Jira, Asana, Trello and monday.com tasks with status sync; Google Calendar and Outlook auto-join.
+- 📤 **Delivery and integrations** - reports by email and Slack; Trello team boards; optional ClickUp, Jira, Asana and monday.com tasks with status sync; Google Calendar and Outlook auto-join.
+- 🧭 **Setup guide** - a step-by-step first-run guide with live checks for every key, so nobody has to edit files to get started.
 
 ## 📸 Screenshots
 

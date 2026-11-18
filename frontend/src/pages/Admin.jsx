@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { CheckCircle2, CircleDashed, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { api } from '../api'
 import TeamBoardSettings from '../components/TeamBoardSettings'
@@ -189,7 +190,8 @@ export default function Admin() {
 
   return (
     <>
-      <PageHeader title="Admin" subtitle="People, teams, projects, logins and how the bot behaves" />
+      <PageHeader title="Admin" subtitle="People, teams, projects, logins and how the bot behaves"
+        actions={user.role === 'admin' && <Link to="/setup"><Button variant="secondary" size="sm">Setup guide</Button></Link>} />
       <div className="mb-5"><Tabs value={tab} onChange={setTab} tabs={[['people', 'Employees'], ['teams', 'Teams'], ['projects', 'Projects'], ...(user.role === 'admin' ? [['users', 'Users']] : []), ['settings', 'Bot & settings']]} /></div>
 
       {tab === 'people' && (

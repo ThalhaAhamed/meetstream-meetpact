@@ -25,6 +25,8 @@ DEFAULTS: Dict[str, Any] = {
     "default_share_employee": {"audience": "managers", "user_ids": []},
     # Create task-tool tasks automatically for new AI action items.
     "auto_push_provider": None,
+    # Set when an admin finishes (or skips) the setup wizard.
+    "onboarding_done": False,
     # Trello connection saved from the app (TRELLO_API_KEY / TRELLO_TOKEN in .env win).
     "trello_api_key": None,
     "trello_token": None,

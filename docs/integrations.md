@@ -46,6 +46,30 @@ Each person allowed to see the full report gets it by email, with individual upd
 employee-update sharing setting. Slack gets a short summary and a link, and only for reports shared
 with participants or managers. A report is sent once; "Send report" on the meeting page resends it.
 
+## Trello as a team's task board
+
+Each team keeps its tasks either on MeetPact's own board or on a Trello board.
+
+1. **Connect Trello** under **Admin → Bot & settings → Trello** (or the setup guide): create a Power-Up
+   at [trello.com/power-ups/admin](https://trello.com/power-ups/admin), paste its API key, click
+   *Allow MeetPact on Trello* and paste the token Trello shows. `TRELLO_API_KEY` / `TRELLO_TOKEN` in
+   `.env` work too and take priority.
+2. **Admin → Teams → edit a team → Task board → Trello board:** pick the board. MeetPact guesses what each
+   list means from its name (To do, Doing, Blocked, Done, or not tracked) and matches Trello members to
+   people by name; correct either there.
+
+Then, for that team:
+
+* **Work board** shows the live Trello board (pick the team at the top): lists in Trello's order, who is
+  on each card, due dates, links to the cards. Dragging a card moves it in Trello.
+* Every open card is also a work item, so dashboards, reports, Ask and the person pages include them.
+  The board syncs every `INTEGRATION_SYNC_MINUTES`, when it is opened, before a meeting is analysed
+  and before a stand-up starts.
+* New work from that team's meetings becomes cards in the first *To do* list (assigned to the person when
+  they're matched); work reported as done or in progress moves its card to the matching list.
+* The AI stand-up host gets the open cards and who owns them: it asks people about their own cards and
+  raises overdue or unassigned ones before wrapping up.
+
 ## Task tools
 
 Set the variables for any tool in `.env` (see `.env.example`) and restart. **Admin → Task tools →

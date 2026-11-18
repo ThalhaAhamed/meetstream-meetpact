@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertOctagon, ArrowRight, CalendarClock, CheckCircle2, Clock, FolderKanban, Repeat, TrendingUp, Users, Video } from 'lucide-react'
 import { api } from '../api'
+import { useUser } from '../user'
 import {
   Avatar, Badge, BotStatus, Card, CardHeader, Empty, ErrorBox, PageHeader, ProcStatus, Select, Spinner, Stat,
   fmtDateTime, relTime, useLoad,
@@ -82,6 +83,8 @@ export default function Dashboard() {
   const { data, error, loading } = useLoad(() => api.dashboard(teamId || undefined), [teamId])
   const teams = useLoad(() => api.teams(), [])
   const upcoming = useLoad(() => api.upcoming(2), [])
+  const user = useUser()
+  const setup = useLoad(() => (user.role === 'admin' ? api.setupStatus() : Promise.resolve(null)), [])
 
   return (
     <>
@@ -95,6 +98,12 @@ export default function Dashboard() {
           </Select>
         }
       />
+      {setup.data && !setup.data.done && (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border-2 border-ink-950 bg-accent-soft px-4 py-3 shadow-press">
+          <p className="text-sm font-bold">Finish setting up MeetPact: meeting bot, AI, team, task board, calendar and reports.</p>
+          <Link to="/setup" className="inline-flex items-center gap-1 rounded-md border-2 border-ink-950 bg-accent px-3 py-1 text-sm font-bold shadow-press">Open the setup guide <ArrowRight className="h-4 w-4" /></Link>
+        </div>
+      )}
       <ErrorBox error={error} />
       {loading && !data ? <Spinner /> : data && (
         <div className="space-y-5">
