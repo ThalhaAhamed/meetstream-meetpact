@@ -102,6 +102,16 @@ class Settings(BaseSettings):
     MONDAY_STATUS_COLUMN_ID: str = "status"
     INTEGRATION_SYNC_MINUTES: int = 15
 
+    # ---- Google Calendar sign-in (optional) -------------------------------
+    # An OAuth "Web application" client from Google Cloud. With these set,
+    # Schedules -> Calendar auto-join shows "Connect Google Calendar", which
+    # signs in with Google and hands the refresh token to MeetStream.
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    # Must match an "Authorized redirect URI" on the client exactly.
+    # Default: http://localhost:<PORT>/api/calendar/google/callback
+    GOOGLE_REDIRECT_URI: Optional[str] = None
+
     # ---- Report delivery (optional) ---------------------------------------
     APP_URL: str = "http://localhost:5173"  # links in emails / Slack point here
     SMTP_HOST: Optional[str] = None

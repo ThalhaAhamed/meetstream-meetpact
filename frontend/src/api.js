@@ -100,8 +100,10 @@ export const api = {
   deleteUser: (id) => del(`/api/users/${id}`),
   settings: () => get('/api/settings'),
   saveSettings: (b) => put('/api/settings', b),
+  testDelivery: (channel) => post('/api/settings/delivery-test', { channel }),
   integrations: () => get('/api/integrations'),
   syncIntegrations: () => post('/api/integrations/sync'),
+  checkIntegration: (name) => post(`/api/integrations/${name}/check`),
 
   // calendar
   calendar: () => get('/api/calendar'),

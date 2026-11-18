@@ -165,3 +165,54 @@ def test_erase_employee_is_admin_only_and_complete(client, db, people):
     assert db.get(Employee, sam_id) is None
     seg = db.query(TranscriptSegment).filter_by(meeting_id=m.id).one()
     assert seg.text == "[removed]" and seg.speaker == "Removed person"
+
+
+def test_google_calendar_sign_in(client, db, people, monkeypatch):
+    """Connect Google Calendar: start -> Google -> callback -> token to MeetStream."""
+    from urllib.parse import parse_qs, urlparse
+
+    import httpx
+
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "GOOGLE_CLIENT_ID", "cid.apps.googleusercontent.com")
+    monkeypatch.setattr(settings, "GOOGLE_CLIENT_SECRET", "secret")
+    monkeypatch.setattr(settings, "APP_URL", "http://localhost:5173")
+    sent = {}
+
+    async def connect_google(self, client_id, client_secret, refresh_token):
+        sent.update(client_id=client_id, refresh_token=refresh_token)
+        return {"user_email": "owner@example.com"}
+
+    class FakeResp:
+        status_code = 200
+        headers = {"content-type": "application/json"}
+
+        def json(self):
+            return {"access_token": "a", "refresh_token": "r-123"}
+
+    async def fake_post(self, url, data=None, **kw):
+        assert url == "https://oauth2.googleapis.com/token" and data["code"] == "the-code"
+        return FakeResp()
+
+    monkeypatch.setattr(MeetStreamClient, "connect_google_calendar", connect_google)
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+
+    login(client, "admin")
+    assert client.get("/api/calendar").json()["google_sign_in"] is True
+    r = client.get("/api/calendar/google/start", follow_redirects=False)
+    assert r.status_code == 303
+    q = parse_qs(urlparse(r.headers["location"]).query)
+    assert q["access_type"] == ["offline"] and "calendar.readonly" in q["scope"][0]
+    assert q["redirect_uri"] == [f"http://localhost:{settings.PORT}/api/calendar/google/callback"]
+
+    bad = client.get("/api/calendar/google/callback", params={"code": "the-code", "state": "forged"}, follow_redirects=False)
+    assert "calendar_error" in bad.headers["location"] and not sent
+
+    ok = client.get("/api/calendar/google/callback", params={"code": "the-code", "state": q["state"][0]}, follow_redirects=False)
+    assert ok.headers["location"] == "http://localhost:5173/schedules?calendar=connected"
+    assert sent == {"client_id": "cid.apps.googleusercontent.com", "refresh_token": "r-123"}
+    assert client.get("/api/calendar").json()["account"] == "owner@example.com"
+
+    login(client, "mgr")
+    assert client.get("/api/calendar/google/start", follow_redirects=False).status_code == 403

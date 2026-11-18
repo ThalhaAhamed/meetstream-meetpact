@@ -49,6 +49,20 @@ function SettingsTab() {
   const { data, error, reload } = useLoad(() => api.settings(), [])
   const integrations = useLoad(() => api.integrations(), [])
   const [values, setValues] = useState(null)
+  const [testing, setTesting] = useState(null)
+  const [testResult, setTestResult] = useState(null)
+  const [checks, setChecks] = useState({})
+  const checkTool = async (name) => {
+    setChecks((c) => ({ ...c, [name]: 'busy' }))
+    try { const r = await api.checkIntegration(name); setChecks((c) => ({ ...c, [name]: { ok: true, text: r.message } })) }
+    catch (e) { setChecks((c) => ({ ...c, [name]: { ok: false, text: String(e.message || e) } })) }
+  }
+  const runTest = async (channel) => {
+    setTesting(channel); setTestResult(null)
+    try { const r = await api.testDelivery(channel); setTestResult({ ok: true, text: r.message }) }
+    catch (e) { setTestResult({ ok: false, text: String(e.message || e) }) }
+    finally { setTesting(null) }
+  }
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState(null)
   const user = useUser()
@@ -97,6 +111,13 @@ function SettingsTab() {
                   checked={!!values.deliver_slack} onChange={(e) => setValues({ ...values, deliver_slack: e.target.checked })} />
                   Summary to Slack {!env.slack_configured && <span className="text-xs text-ink-500">(set SLACK_WEBHOOK_URL)</span>}</label>
                 <p className="mt-1 text-[11px] text-ink-500">Slack only gets reports shared with participants or managers.</p>
+                {admin && (env.email_configured || env.slack_configured) && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {env.email_configured && <Button size="sm" variant="secondary" loading={testing === 'email'} onClick={() => runTest('email')}>Send test email</Button>}
+                    {env.slack_configured && <Button size="sm" variant="secondary" loading={testing === 'slack'} onClick={() => runTest('slack')}>Send test to Slack</Button>}
+                  </div>
+                )}
+                {testResult && <p className={`mt-1 text-xs font-medium ${testResult.ok ? 'text-ink-950' : 'text-signal-red'}`}>{testResult.text}</p>}
               </div>
               <Field label="Delete transcripts and recordings after (days)" hint="0 keeps them. Reports and progress records are always kept. Recordings are also deleted at MeetStream.">
                 <Input type="number" min="0" disabled={!admin} value={values.transcript_retention_days ?? 0}
@@ -128,8 +149,12 @@ function SettingsTab() {
           <div className="divide-y divide-ink-950/15">
             {(integrations.data || []).map((p) => (
               <div key={p.name} className="px-5 py-2.5">
-                <div className="flex items-center justify-between"><span className="text-sm font-medium">{p.label}</span>{p.configured ? <Badge tone="green">Connected</Badge> : <Badge>Not set up</Badge>}</div>
+                <div className="flex items-center justify-between gap-2"><span className="text-sm font-medium">{p.label}</span>
+                  <span className="flex items-center gap-1.5">
+                    {p.configured && isManager(user) && <Button size="sm" variant="ghost" loading={checks[p.name] === 'busy'} onClick={() => checkTool(p.name)}>Check</Button>}
+                    {p.configured ? <Badge tone="green">Set up</Badge> : <Badge>Not set up</Badge>}</span></div>
                 {!p.configured && <p className="mt-0.5 font-mono text-[10px] text-ink-400">{p.required_env.join(' ')}</p>}
+                {checks[p.name] && checks[p.name] !== 'busy' && <p className={`mt-0.5 text-xs font-medium ${checks[p.name].ok ? 'text-ink-950' : 'text-signal-red'}`}>{checks[p.name].text}</p>}
               </div>
             ))}
           </div>

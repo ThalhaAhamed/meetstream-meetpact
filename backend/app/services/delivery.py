@@ -53,8 +53,13 @@ def _send_email(to: str, subject: str, body: str) -> None:
     msg["To"] = to
     msg["Subject"] = subject
     msg.set_content(body)
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as smtp:
-        if settings.SMTP_STARTTLS:
+    # Port 465 is implicit TLS (SMTP_SSL); 587/25 upgrade with STARTTLS.
+    if settings.SMTP_PORT == 465:
+        conn = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30)
+    else:
+        conn = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30)
+    with conn as smtp:
+        if settings.SMTP_PORT != 465 and settings.SMTP_STARTTLS:
             smtp.starttls()
         if settings.SMTP_USER:
             smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD or "")
@@ -72,6 +77,38 @@ def slack_text(meeting: Meeting) -> str:
             + (f" (due {a['due_date']})" if a.get("due_date") else "") for a in s["action_items"][:8]))
     lines.append(f"<{meeting_url(meeting)}|Open the full report>")
     return "\n\n".join(l for l in lines if l)
+
+
+async def send_test(channel: str, to_email: str | None) -> str:
+    """Send a test message so an admin can check the setup. Raises ValueError
+    with a readable reason on failure."""
+    if channel == "email":
+        if not email_configured():
+            raise ValueError("Email is not set up: set SMTP_HOST and SMTP_FROM in .env and restart.")
+        if not to_email:
+            raise ValueError("Your account has no email address to send the test to.")
+        try:
+            await asyncio.to_thread(_send_email, to_email, "MeetPact test email",
+                                    "This is a test from MeetPact. Meeting reports will arrive like this.\n\n"
+                                    f"Open MeetPact: {settings.APP_URL}\n")
+        except smtplib.SMTPAuthenticationError:
+            raise ValueError("The mail server rejected the login. For Gmail, SMTP_PASSWORD must be an app password.")
+        except (OSError, smtplib.SMTPException) as exc:
+            raise ValueError(f"Sending failed: {exc.__class__.__name__}: {str(exc)[:200]}")
+        return f"Test email sent to {to_email}."
+    if channel == "slack":
+        if not slack_configured():
+            raise ValueError("Slack is not set up: set SLACK_WEBHOOK_URL in .env and restart.")
+        try:
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                r = await client.post(settings.SLACK_WEBHOOK_URL, json={
+                    "text": f"*MeetPact test* - meeting reports will be posted here. <{settings.APP_URL}|Open MeetPact>"})
+        except httpx.HTTPError as exc:
+            raise ValueError(f"Could not reach Slack ({exc.__class__.__name__}).")
+        if r.status_code >= 400:
+            raise ValueError(f"Slack answered {r.status_code}: {r.text[:200]}")
+        return "Test message posted to Slack."
+    raise ValueError("Unknown channel.")
 
 
 async def deliver(db: Session, meeting: Meeting) -> Dict[str, int]:

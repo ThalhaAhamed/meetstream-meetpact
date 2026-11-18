@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -255,6 +256,20 @@ def delete_user(user_id: str, db: Session = Depends(get_db), admin: User = Depen
 
 # ---- settings & integrations --------------------------------------------------
 
+class DeliveryTest(BaseModel):
+    channel: str  # email | slack
+
+
+@router.post("/settings/delivery-test")
+async def delivery_test(body: DeliveryTest, admin: User = Depends(require_admin)):
+    from app.services.delivery import send_test
+
+    try:
+        return {"message": await send_test(body.channel, admin.email)}
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
 @router.get("/settings")
 def get_settings(db: Session = Depends(get_db), _: User = Depends(current_user)):
     values = {k: v for k, v in all_settings(db).items() if k not in SECRET_KEYS}
@@ -286,6 +301,19 @@ def put_settings(values: dict, db: Session = Depends(get_db), _: User = Depends(
 @router.get("/integrations")
 def list_integrations(_: User = Depends(current_user)):
     return integrations.status_list()
+
+
+@router.post("/integrations/{name}/check")
+async def check_integration(name: str, _: User = Depends(require_manager)):
+    from app.services.integrations.base import IntegrationError
+
+    try:
+        target = await integrations.get_provider(name).check_connection()
+    except IntegrationError as exc:
+        raise HTTPException(400, str(exc))
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, f"Could not reach the service ({exc.__class__.__name__}).")
+    return {"message": f"Connected. New tasks go to {target}."}
 
 
 @router.post("/integrations/sync")

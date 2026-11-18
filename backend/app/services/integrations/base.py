@@ -33,6 +33,11 @@ class Provider:
         """Return (raw external status, mapped local status or None)."""
         raise NotImplementedError
 
+    async def check_connection(self) -> str:
+        """Read-only check of the credentials and the target list/project.
+        Returns what tasks will be created in. Raises IntegrationError."""
+        raise NotImplementedError
+
     @staticmethod
     def check(resp: httpx.Response, label: str) -> dict:
         if resp.status_code in (401, 403):

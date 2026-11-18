@@ -41,6 +41,12 @@ class ClickUp(Provider):
         return raw, mapped
 
 
+    async def check_connection(self):
+        async with httpx.AsyncClient(timeout=TIMEOUT) as c:
+            data = self.check(await c.get(f"{self.base}/list/{settings.CLICKUP_LIST_ID}", headers=self._h()), self.label)
+        return f"list \"{data.get('name', settings.CLICKUP_LIST_ID)}\""
+
+
 class Jira(Provider):
     name, label = "jira", "Jira"
     required_env = ["JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN", "JIRA_PROJECT_KEY"]
@@ -82,6 +88,16 @@ class Jira(Provider):
         return raw, mapped
 
 
+    async def check_connection(self):
+        async with httpx.AsyncClient(timeout=TIMEOUT, auth=self._auth()) as c:
+            data = self.check(await c.get(f"{self.base}/rest/api/3/project/{settings.JIRA_PROJECT_KEY}"), self.label)
+            types = [t.get("name") for t in data.get("issueTypes") or []]
+        if types and settings.JIRA_ISSUE_TYPE not in types:
+            raise IntegrationError(f"Project {settings.JIRA_PROJECT_KEY} has no issue type \"{settings.JIRA_ISSUE_TYPE}\". "
+                                   f"Set JIRA_ISSUE_TYPE to one of: {', '.join(types)}.")
+        return f"project {data.get('key')} \"{data.get('name', '')}\" as {settings.JIRA_ISSUE_TYPE}"
+
+
 class Asana(Provider):
     name, label = "asana", "Asana"
     required_env = ["ASANA_ACCESS_TOKEN", "ASANA_PROJECT_GID"]
@@ -112,6 +128,13 @@ class Asana(Provider):
         return ("completed" if done else "incomplete"), ("completed" if done else None)
 
 
+    async def check_connection(self):
+        async with httpx.AsyncClient(timeout=TIMEOUT) as c:
+            body = self.check(await c.get(f"{self.base}/projects/{settings.ASANA_PROJECT_GID}",
+                                          params={"opt_fields": "name"}, headers=self._h()), self.label)
+        return f"project \"{(body.get('data') or {}).get('name', settings.ASANA_PROJECT_GID)}\""
+
+
 class Trello(Provider):
     name, label = "trello", "Trello"
     required_env = ["TRELLO_API_KEY", "TRELLO_TOKEN", "TRELLO_LIST_ID"]
@@ -140,6 +163,13 @@ class Trello(Provider):
         if card.get("closed"):
             return "archived", "dropped"
         return "open", None
+
+
+    async def check_connection(self):
+        async with httpx.AsyncClient(timeout=TIMEOUT) as c:
+            lst = self.check(await c.get(f"{self.base}/lists/{settings.TRELLO_LIST_ID}",
+                                         params={**self._auth(), "fields": "name,idBoard"}), self.label)
+        return f"list \"{lst.get('name', settings.TRELLO_LIST_ID)}\""
 
 
 class Monday(Provider):
@@ -176,6 +206,14 @@ class Monday(Provider):
             raise IntegrationError("monday.com item not found.")
         raw = next((c.get("text") or "" for c in items[0]["column_values"] if c["id"] == settings.MONDAY_STATUS_COLUMN_ID), "")
         return raw, map_status_text(raw)
+
+
+    async def check_connection(self):
+        data = await self._gql("query ($ids: [ID!]) { boards (ids: $ids) { name } }", {"ids": [settings.MONDAY_BOARD_ID]})
+        boards = data.get("boards") or []
+        if not boards:
+            raise IntegrationError(f"monday.com board {settings.MONDAY_BOARD_ID} not found.")
+        return f"board \"{boards[0].get('name')}\""
 
 
 PROVIDERS: Dict[str, Provider] = {p.name: p for p in (ClickUp(), Jira(), Asana(), Trello(), Monday())}

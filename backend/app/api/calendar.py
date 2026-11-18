@@ -2,14 +2,19 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlencode
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import RedirectResponse
+from itsdangerous import BadSignature, URLSafeTimedSerializer
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api import serializers as S
 from app.auth import current_user, require_admin, require_manager
+from app.config import secret_key, settings
 from app.db import get_db
 from app.models import Meeting, User
 from app.services import bots, calendar_sync
@@ -27,6 +32,8 @@ async def status(db: Session = Depends(get_db), _: User = Depends(current_user))
         "auto_join": bool(get_setting(db, "calendar_auto_join")),
         "include_keywords": get_setting(db, "calendar_include_keywords"),
         "exclude_keywords": get_setting(db, "calendar_exclude_keywords"),
+        "google_sign_in": google_sign_in_ready(),
+        "google_redirect_uri": google_redirect_uri() if google_sign_in_ready() else None,
     }
 
 
@@ -50,6 +57,84 @@ async def connect(body: ConnectBody, db: Session = Depends(get_db), admin: User 
     account = resp.get("user_email") or resp.get("account_id") or resp.get("email") or body.provider
     set_settings(db, {"calendar_connected": True, "calendar_account": account, "calendar_owner_user_id": admin.id})
     return {"connected": True, "account": account}
+
+
+# ---- Google sign-in -----------------------------------------------------------
+# The OAuth dance happens here so nobody has to produce a refresh token by
+# hand. Only read-only scopes are asked for; the token goes to MeetStream
+# (POST /calendar/create_calendar) and is not stored by this app.
+
+GOOGLE_SCOPES = [
+    "https://www.googleapis.com/auth/calendar.readonly",
+    "https://www.googleapis.com/auth/calendar.events.readonly",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+]
+STATE_MAX_AGE = 600
+
+
+def google_sign_in_ready() -> bool:
+    return bool(settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET)
+
+
+def google_redirect_uri() -> str:
+    return settings.GOOGLE_REDIRECT_URI or f"http://localhost:{settings.PORT}/api/calendar/google/callback"
+
+
+def _state_signer() -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(secret_key(), salt="meetpact-google-oauth")
+
+
+def _back_to_app(**query: str) -> RedirectResponse:
+    return RedirectResponse(f"{settings.APP_URL.rstrip('/')}/schedules?{urlencode(query)}", status_code=303)
+
+
+@router.get("/google/start")
+def google_start(admin: User = Depends(require_admin)):
+    if not google_sign_in_ready():
+        raise HTTPException(400, "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env first.")
+    params = {
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "redirect_uri": google_redirect_uri(),
+        "response_type": "code",
+        "scope": " ".join(GOOGLE_SCOPES),
+        "access_type": "offline",
+        "prompt": "consent",  # always return a refresh token
+        "include_granted_scopes": "true",
+        "state": _state_signer().dumps(admin.id),
+    }
+    return RedirectResponse("https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params), status_code=303)
+
+
+@router.get("/google/callback")
+async def google_callback(code: str = "", state: str = "", error: str = "", db: Session = Depends(get_db),
+                          admin: User = Depends(require_admin)):
+    if error:
+        return _back_to_app(calendar_error=f"Google sign-in was cancelled ({error}).")
+    try:
+        if _state_signer().loads(state, max_age=STATE_MAX_AGE) != admin.id:
+            raise BadSignature("different user")
+    except BadSignature:
+        return _back_to_app(calendar_error="The sign-in link expired. Try again.")
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.post("https://oauth2.googleapis.com/token", data={
+                "code": code, "client_id": settings.GOOGLE_CLIENT_ID, "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                "redirect_uri": google_redirect_uri(), "grant_type": "authorization_code",
+            })
+    except httpx.HTTPError:
+        return _back_to_app(calendar_error="Could not reach Google. Try again.")
+    token = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+    refresh = token.get("refresh_token")
+    if resp.status_code != 200 or not refresh:
+        detail = token.get("error_description") or token.get("error") or f"HTTP {resp.status_code}"
+        return _back_to_app(calendar_error=f"Google did not return a refresh token: {detail}")
+    try:
+        await connect(ConnectBody(provider="google", client_id=settings.GOOGLE_CLIENT_ID,
+                                  client_secret=settings.GOOGLE_CLIENT_SECRET, refresh_token=refresh), db, admin)
+    except HTTPException as exc:
+        return _back_to_app(calendar_error=str(exc.detail))
+    return _back_to_app(calendar="connected")
 
 
 @router.delete("")
