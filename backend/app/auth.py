@@ -8,7 +8,7 @@ from fastapi import Depends, HTTPException, Request, Response, status
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from sqlalchemy.orm import Session
 
-from app.config import secret_key
+from app.config import secret_key, settings
 from app.db import get_db
 from app.models import User
 
@@ -33,7 +33,8 @@ def verify_password(pw: str, hashed: str) -> bool:
 
 def set_session(response: Response, user: User) -> None:
     token = _serializer().dumps({"uid": user.id})
-    response.set_cookie(COOKIE, token, max_age=MAX_AGE, httponly=True, samesite="lax")
+    response.set_cookie(COOKIE, token, max_age=MAX_AGE, httponly=True, samesite="lax",
+                        secure=settings.APP_URL.startswith("https://"))
 
 
 def clear_session(response: Response) -> None:

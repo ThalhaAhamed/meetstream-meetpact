@@ -12,7 +12,7 @@ def _event(minutes_from_now, title="Platform sync", url="https://meet.google.com
     start = datetime.now(timezone.utc) + timedelta(minutes=minutes_from_now)
     return {"id": eid, "start_time": start.isoformat(), "end_time": (start + timedelta(minutes=30)).isoformat(),
             "meeting_url": url, "meeting_platform": "google_meet", "is_deleted": False,
-            "raw": {"summary": title, "organizer": {"email": "maya@t.local"}}, "bots": []}
+            "raw": {"summary": title, "organizer": {"email": "maya@t.dev"}}, "bots": []}
 
 
 def test_calendar_auto_join_books_matching_events_once(db, people, monkeypatch):
@@ -65,7 +65,7 @@ def test_delivery_respects_sharing_and_sends_once(db, people, monkeypatch):
 
     sent, posted = [], []
     monkeypatch.setattr(settings, "SMTP_HOST", "smtp.test")
-    monkeypatch.setattr(settings, "SMTP_FROM", "notes@t.local")
+    monkeypatch.setattr(settings, "SMTP_FROM", "notes@t.dev")
     monkeypatch.setattr(settings, "SLACK_WEBHOOK_URL", "https://hooks.slack.test/x")
     monkeypatch.setattr(delivery, "_send_email", lambda to, subject, body: sent.append((to, body)))
 
@@ -84,8 +84,8 @@ def test_delivery_respects_sharing_and_sends_once(db, people, monkeypatch):
     result = asyncio.run(delivery.deliver(db, m))
     to = {t for t, _ in sent}
     # Organizer (mgr), admin and the two participants; not the lead who wasn't there.
-    assert to == {"mgr@t.local", "admin@t.local", "sam@t.local", "lena@t.local"}
-    sam_body = next(b for t, b in sent if t == "sam@t.local")
+    assert to == {"mgr@t.dev", "admin@t.dev", "sam@t.dev", "lena@t.dev"}
+    sam_body = next(b for t, b in sent if t == "sam@t.dev")
     assert "sam private update" in sam_body and "lena private update" not in sam_body
     assert result["slack"] == 1 and "Ship behind a flag" in posted[0]
     assert asyncio.run(delivery.deliver(db, m)) == {"emails": 0, "slack": 0}  # once only
@@ -216,3 +216,22 @@ def test_google_calendar_sign_in(client, db, people, monkeypatch):
 
     login(client, "mgr")
     assert client.get("/api/calendar/google/start", follow_redirects=False).status_code == 403
+
+
+def test_app_url_drives_public_address_and_links(monkeypatch):
+    from app.config import settings
+    from app.services import delivery
+    from app.services.tunnel import tunnel
+
+    m = Meeting(id="m1", title="Sync")
+    monkeypatch.setattr(settings, "PUBLIC_URL", None)
+    monkeypatch.setattr(settings, "APP_URL", "http://localhost:5173")
+    assert not settings.app_url_is_public and delivery.report_link(m) is None
+    assert "Open the full report" not in delivery.slack_text(m)
+    monkeypatch.setattr(settings, "APP_URL", "https://meetpact.example.com/")
+    assert settings.app_url_is_public and not tunnel.wanted()
+    assert settings.public_url == "https://meetpact.example.com"
+    assert delivery.report_link(m) == "https://meetpact.example.com/meetings/m1"
+    assert "Open the full report" in delivery.slack_text(m)
+    assert delivery.deliverable("thal@gmail.com") and not delivery.deliverable("maya@demo.local")
+    assert not delivery.deliverable("a@example.com") and not delivery.deliverable(None)

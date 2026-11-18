@@ -98,6 +98,7 @@ deterministically (de-duplication, carry-over, history). Details: [docs/architec
 
 | | |
 |---|---|
+| [Self-hosting](docs/self-hosting.md) | Run it on your own server with a domain and HTTPS |
 | [Configuration](docs/configuration.md) | Every environment variable |
 | [Architecture](docs/architecture.md) | Pipeline, data model, MeetStream APIs used |
 | [AI stand-up host](docs/standup.md) | How the voice agent runs a meeting, providers, limits |
@@ -107,6 +108,9 @@ deterministically (de-duplication, carry-over, history). Details: [docs/architec
 | [Troubleshooting](docs/troubleshooting.md) | Common problems and fixes |
 
 ## ❓ FAQ
+
+**Where does it run?** On your own machine or server; there is no hosted version. On a server, set
+`APP_URL` to your domain ([self-hosting guide](docs/self-hosting.md)).
 
 **Does it need a public URL?** No. Without one it polls MeetStream. If `cloudflared` is installed,
 MeetPact opens a tunnel by itself (only MeetStream's paths go through it), which adds live webhooks:

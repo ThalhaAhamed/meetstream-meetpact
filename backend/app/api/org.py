@@ -308,12 +308,13 @@ async def check_integration(name: str, _: User = Depends(require_manager)):
     from app.services.integrations.base import IntegrationError
 
     try:
-        target = await integrations.get_provider(name).check_connection()
+        result = await integrations.get_provider(name).check_connection()
     except IntegrationError as exc:
         raise HTTPException(400, str(exc))
     except httpx.HTTPError as exc:
         raise HTTPException(502, f"Could not reach the service ({exc.__class__.__name__}).")
-    return {"message": f"Connected. New tasks go to {target}."}
+    target, url = result if isinstance(result, tuple) else (result, None)
+    return {"message": f"Connected. New tasks go to {target}.", "url": url}
 
 
 @router.post("/integrations/sync")

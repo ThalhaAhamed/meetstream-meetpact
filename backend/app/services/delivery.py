@@ -43,8 +43,21 @@ def meeting_url(meeting: Meeting) -> str:
     return f"{settings.APP_URL.rstrip('/')}/meetings/{meeting.id}"
 
 
+# Reserved/example domains never receive mail; sending to them only bounces.
+UNDELIVERABLE = (".local", ".localhost", ".test", ".example", ".invalid", "@example.com", "@example.org")
+
+
+def deliverable(email: str | None) -> bool:
+    return bool(email) and "@" in email and not email.lower().endswith(UNDELIVERABLE)
+
+
+def report_link(meeting: Meeting) -> str | None:
+    """A link back to the report, only when APP_URL is an address others can open."""
+    return meeting_url(meeting) if settings.app_url_is_public else None
+
+
 def recipients(db: Session, meeting: Meeting) -> List[User]:
-    return [u for u in db.scalars(select(User)) if u.email and access.can_view_full(db, u, meeting)]
+    return [u for u in db.scalars(select(User)) if deliverable(u.email) and access.can_view_full(db, u, meeting)]
 
 
 def _send_email(to: str, subject: str, body: str) -> None:
@@ -75,7 +88,8 @@ def slack_text(meeting: Meeting) -> str:
         lines.append("*Action items*\n" + "\n".join(
             f"• {a.get('title')}" + (f" - {a['owner_name']}" if a.get("owner_name") else "")
             + (f" (due {a['due_date']})" if a.get("due_date") else "") for a in s["action_items"][:8]))
-    lines.append(f"<{meeting_url(meeting)}|Open the full report>")
+    if report_link(meeting):
+        lines.append(f"<{report_link(meeting)}|Open the full report>")
     return "\n\n".join(l for l in lines if l)
 
 
@@ -90,7 +104,7 @@ async def send_test(channel: str, to_email: str | None) -> str:
         try:
             await asyncio.to_thread(_send_email, to_email, "MeetPact test email",
                                     "This is a test from MeetPact. Meeting reports will arrive like this.\n\n"
-                                    f"Open MeetPact: {settings.APP_URL}\n")
+                                    + (f"Open MeetPact: {settings.APP_URL}\n" if settings.app_url_is_public else ""))
         except smtplib.SMTPAuthenticationError:
             raise ValueError("The mail server rejected the login. For Gmail, SMTP_PASSWORD must be an app password.")
         except (OSError, smtplib.SMTPException) as exc:
@@ -102,7 +116,8 @@ async def send_test(channel: str, to_email: str | None) -> str:
         try:
             async with httpx.AsyncClient(timeout=20.0) as client:
                 r = await client.post(settings.SLACK_WEBHOOK_URL, json={
-                    "text": f"*MeetPact test* - meeting reports will be posted here. <{settings.APP_URL}|Open MeetPact>"})
+                    "text": "*MeetPact test* - meeting reports will be posted here."
+                            + (f" <{settings.APP_URL}|Open MeetPact>" if settings.app_url_is_public else "")})
         except httpx.HTTPError as exc:
             raise ValueError(f"Could not reach Slack ({exc.__class__.__name__}).")
         if r.status_code >= 400:
@@ -119,7 +134,8 @@ async def deliver(db: Session, meeting: Meeting) -> Dict[str, int]:
     if get_setting(db, "deliver_email") and email_configured():
         for user in recipients(db, meeting):
             body = render_meeting_report(db, meeting, lambda eid, u=user: access.can_view_employee_section(db, u, meeting, eid))
-            body += f"\n\nOpen in the app: {meeting_url(meeting)}\n"
+            if report_link(meeting):
+                body += f"\n\nOpen in the app: {report_link(meeting)}\n"
             try:
                 await asyncio.to_thread(_send_email, user.email, f"Meeting notes: {meeting.title}", body)
                 sent["emails"] += 1

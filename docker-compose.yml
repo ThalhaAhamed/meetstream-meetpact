@@ -6,8 +6,9 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: sqlite:////data/tracker.db
-      APP_URL: http://localhost:8000
-      FRONTEND_ORIGIN: http://localhost:8000
+      # Set APP_URL in .env to your domain on a server (see docs/self-hosting.md).
+      APP_URL: ${APP_URL:-http://localhost:8000}
+      FRONTEND_ORIGIN: ${APP_URL:-http://localhost:8000}
     volumes:
       - tracker-data:/data
     restart: unless-stopped

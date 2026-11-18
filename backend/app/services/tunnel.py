@@ -72,7 +72,7 @@ class TunnelManager:
         self._restarts = 0
 
     def wanted(self) -> bool:
-        return not settings.PUBLIC_URL and settings.TUNNEL.lower() == "auto"
+        return not settings.PUBLIC_URL and not settings.app_url_is_public and settings.TUNNEL.lower() == "auto"
 
     def describe(self) -> dict:
         return {"state": self.state, "url": self.url, "error": self.error}

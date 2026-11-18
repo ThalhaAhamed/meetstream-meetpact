@@ -113,7 +113,11 @@ class Settings(BaseSettings):
     GOOGLE_REDIRECT_URI: Optional[str] = None
 
     # ---- Report delivery (optional) ---------------------------------------
-    APP_URL: str = "http://localhost:5173"  # links in emails / Slack point here
+    # The address people open MeetPact at. On a server set it to your domain
+    # (https://meetpact.example.com): report links, Google sign-in and
+    # MeetStream's callbacks all follow from it. On localhost, links are left
+    # out of Slack/email and the automatic tunnel serves MeetStream instead.
+    APP_URL: str = "http://localhost:5173"
     SMTP_HOST: Optional[str] = None
     SMTP_PORT: int = 587
     SMTP_USER: Optional[str] = None
@@ -123,10 +127,24 @@ class Settings(BaseSettings):
     SLACK_WEBHOOK_URL: Optional[str] = None  # Slack incoming webhook for meeting summaries
 
     @property
+    def app_url_is_public(self) -> bool:
+        """True when APP_URL is a real address others can reach (a server,
+        not this laptop). Then it doubles as the public URL for MeetStream,
+        report links are included, and no tunnel is needed."""
+        from urllib.parse import urlparse
+
+        host = (urlparse(self.APP_URL).hostname or "").lower()
+        local = host in ("", "localhost", "127.0.0.1", "0.0.0.0", "::1") or host.endswith((".local", ".localhost"))
+        return not local
+
+    @property
     def public_url(self) -> Optional[str]:
-        """PUBLIC_URL if set, else the automatic tunnel's address while it is up."""
+        """Where MeetStream can reach this server: PUBLIC_URL if set, else APP_URL
+        when it is a public address, else the automatic tunnel while it is up."""
         if self.PUBLIC_URL:
             return self.PUBLIC_URL.rstrip("/")
+        if self.app_url_is_public:
+            return self.APP_URL.rstrip("/")
         from app.services.tunnel import tunnel
 
         return tunnel.url if tunnel.state == "up" else None

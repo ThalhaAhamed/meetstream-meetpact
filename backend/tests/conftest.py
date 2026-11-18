@@ -39,14 +39,14 @@ def people(db):
     db.flush()
     emps = {}
     for key, name in [("lead", "Priya Raman"), ("sam", "Sam Okafor"), ("lena", "Lena Fischer"), ("mgr", "Maya Chen"), ("admin", "Alex Admin")]:
-        e = Employee(name=name, email=f"{key}@t.local", team_id=team.id if key in ("lead", "sam", "lena") else None)
+        e = Employee(name=name, email=f"{key}@t.dev", team_id=team.id if key in ("lead", "sam", "lena") else None)
         db.add(e)
         emps[key] = e
     db.flush()
     team.lead_employee_id = emps["lead"].id
     users = {}
     for key, role in [("admin", "admin"), ("mgr", "manager"), ("lead", "employee"), ("sam", "employee"), ("lena", "employee")]:
-        u = User(email=f"{key}@t.local", name=emps[key].name, role=role, password_hash=hash_password("password123"), employee_id=emps[key].id)
+        u = User(email=f"{key}@t.dev", name=emps[key].name, role=role, password_hash=hash_password("password123"), employee_id=emps[key].id)
         db.add(u)
         users[key] = u
     db.commit()
@@ -54,7 +54,7 @@ def people(db):
 
 
 def login(client: TestClient, key: str):
-    r = client.post("/api/auth/login", json={"email": f"{key}@t.local", "password": "password123"})
+    r = client.post("/api/auth/login", json={"email": f"{key}@t.dev", "password": "password123"})
     assert r.status_code == 200, r.text
     return client
 

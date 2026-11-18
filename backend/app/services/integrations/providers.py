@@ -168,8 +168,10 @@ class Trello(Provider):
     async def check_connection(self):
         async with httpx.AsyncClient(timeout=TIMEOUT) as c:
             lst = self.check(await c.get(f"{self.base}/lists/{settings.TRELLO_LIST_ID}",
-                                         params={**self._auth(), "fields": "name,idBoard"}), self.label)
-        return f"list \"{lst.get('name', settings.TRELLO_LIST_ID)}\""
+                                         params={**self._auth(), "fields": "name"}), self.label)
+            board = self.check(await c.get(f"{self.base}/lists/{settings.TRELLO_LIST_ID}/board",
+                                           params={**self._auth(), "fields": "name,url"}), self.label)
+        return f"list \"{lst.get('name')}\" on board \"{board.get('name')}\"", board.get("url")
 
 
 class Monday(Provider):

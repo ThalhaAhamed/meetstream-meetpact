@@ -54,7 +54,7 @@ function SettingsTab() {
   const [checks, setChecks] = useState({})
   const checkTool = async (name) => {
     setChecks((c) => ({ ...c, [name]: 'busy' }))
-    try { const r = await api.checkIntegration(name); setChecks((c) => ({ ...c, [name]: { ok: true, text: r.message } })) }
+    try { const r = await api.checkIntegration(name); setChecks((c) => ({ ...c, [name]: { ok: true, text: r.message, url: r.url } })) }
     catch (e) { setChecks((c) => ({ ...c, [name]: { ok: false, text: String(e.message || e) } })) }
   }
   const runTest = async (channel) => {
@@ -154,7 +154,7 @@ function SettingsTab() {
                     {p.configured && isManager(user) && <Button size="sm" variant="ghost" loading={checks[p.name] === 'busy'} onClick={() => checkTool(p.name)}>Check</Button>}
                     {p.configured ? <Badge tone="green">Set up</Badge> : <Badge>Not set up</Badge>}</span></div>
                 {!p.configured && <p className="mt-0.5 font-mono text-[10px] text-ink-400">{p.required_env.join(' ')}</p>}
-                {checks[p.name] && checks[p.name] !== 'busy' && <p className={`mt-0.5 text-xs font-medium ${checks[p.name].ok ? 'text-ink-950' : 'text-signal-red'}`}>{checks[p.name].text}</p>}
+                {checks[p.name] && checks[p.name] !== 'busy' && <p className={`mt-0.5 text-xs font-medium ${checks[p.name].ok ? 'text-ink-950' : 'text-signal-red'}`}>{checks[p.name].text}{checks[p.name].url && <> <a href={checks[p.name].url} target="_blank" rel="noreferrer" className="font-bold underline decoration-2 underline-offset-2 hover:bg-accent-soft">Open board</a></>}</p>}
               </div>
             ))}
           </div>

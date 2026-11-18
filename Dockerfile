@@ -17,4 +17,5 @@ COPY --from=ui /ui/dist /app/frontend/dist
 ENV DATABASE_URL=sqlite:////data/tracker.db APP_URL=http://localhost:8000 FRONTEND_ORIGIN=http://localhost:8000
 VOLUME ["/data"]
 EXPOSE 8000
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Hosts that assign a port (Render, Railway, Fly) pass it as $PORT.
+CMD ["sh", "-c", "exec python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips=*"]

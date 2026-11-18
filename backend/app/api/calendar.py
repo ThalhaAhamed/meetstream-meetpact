@@ -78,7 +78,11 @@ def google_sign_in_ready() -> bool:
 
 
 def google_redirect_uri() -> str:
-    return settings.GOOGLE_REDIRECT_URI or f"http://localhost:{settings.PORT}/api/calendar/google/callback"
+    if settings.GOOGLE_REDIRECT_URI:
+        return settings.GOOGLE_REDIRECT_URI
+    if settings.app_url_is_public:
+        return f"{settings.APP_URL.rstrip('/')}/api/calendar/google/callback"
+    return f"http://localhost:{settings.PORT}/api/calendar/google/callback"
 
 
 def _state_signer() -> URLSafeTimedSerializer:
