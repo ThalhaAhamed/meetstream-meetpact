@@ -104,7 +104,7 @@ export default function Schedules() {
           {form.recurrence === 'weekly' && (
             <div className="flex gap-1.5">
               {DAYS.map((d, i) => <button key={d} type="button" onClick={() => toggleDay(i)} className={cx('rounded-lg border px-2.5 py-1 text-xs font-medium',
-                form.days_of_week.includes(i) ? 'border-ink-950 bg-pop-yellow shadow-press' : 'border-ink-950 bg-white text-ink-600')}>{d}</button>)}
+                form.days_of_week.includes(i) ? 'border-ink-950 bg-accent shadow-press' : 'border-ink-950 bg-white text-ink-600')}>{d}</button>)}
             </div>
           )}
           <div className="grid grid-cols-4 gap-3">
@@ -113,7 +113,7 @@ export default function Schedules() {
             <Field label="Team"><Select value={form.team_id} onChange={(e) => setForm({ ...form, team_id: e.target.value })}><option value="">—</option>{(teams.data || []).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</Select></Field>
             <Field label="Project"><Select value={form.project_id} onChange={(e) => setForm({ ...form, project_id: e.target.value })}><option value="">—</option>{(projects.data || []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></Field>
           </div>
-          {form.mode === 'standup' && <p className="rounded-lg bg-sky-50 px-3 py-2 text-xs text-sky-800">The stand-up agent goes through the team roster (the selected team, or everyone) one person at a time, and follows up on what each person committed to last time.</p>}
+          {form.mode === 'standup' && <p className="rounded-md border-2 border-ink-950 bg-pop-sky/40 px-3 py-2 text-xs text-ink-950">The stand-up agent goes through the team roster (the selected team, or everyone) one person at a time, and follows up on what each person committed to last time.</p>}
           <ShareFields full={form.share_full} employee={form.share_employee} onChange={({ full, employee }) => setForm({ ...form, share_full: full, share_employee: employee })} />
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} className="h-4 w-4 rounded-sm border-2 border-ink-950 accent-ink-950" />Active</label>
           <ErrorBox error={formError} />

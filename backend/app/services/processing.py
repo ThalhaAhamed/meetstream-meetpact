@@ -79,26 +79,6 @@ def store_turns(db: Session, meeting: Meeting, turns: List[Dict[str, Any]]) -> N
     db.flush()
 
 
-def redact_opted_out(db: Session, meeting: Meeting) -> set[str]:
-    excluded = consent.opted_out_names(meeting)
-    for seg in meeting.segments:
-        if identity.norm(seg.speaker) in excluded and not seg.redacted:
-            seg.redacted = True
-            seg.text = "[removed - participant opted out of recording]"
-    db.flush()
-    return excluded
-
-
-async def collect_post_call_chat(db: Session, meeting: Meeting) -> None:
-    if not meeting.bot_id:
-        return
-    try:
-        chats = consent.normalize_chats(await meetstream.chats(meeting.bot_id))
-    except (NotReady, MeetStreamError):
-        return
-    await consent.apply_chat_commands(db, meeting, chats, live=False)
-
-
 def rematch_participants(db: Session, meeting: Meeting) -> None:
     """Link still-unmatched speakers to employees added since they were first
     seen (e.g. a profile created after the call). Manual choices are kept."""
@@ -116,7 +96,6 @@ def rematch_participants(db: Session, meeting: Meeting) -> None:
 
 async def analyse_and_apply(db: Session, meeting: Meeting) -> None:
     rematch_participants(db, meeting)
-    excluded = redact_opted_out(db, meeting)
     turns = [
         {"speaker": s.speaker, "text": s.text, "start": s.start_seconds}
         for s in meeting.segments
@@ -130,7 +109,7 @@ async def analyse_and_apply(db: Session, meeting: Meeting) -> None:
         mapped = names.get(t["speaker"])
         if mapped and mapped != t["speaker"]:
             t["speaker"] = f"{mapped} (shown as {t['speaker']})"
-    attendee_ids = sorted({p.employee_id for p in meeting.participants if p.employee_id and not p.opted_out})
+    attendee_ids = sorted({p.employee_id for p in meeting.participants if p.employee_id})
     prompt = build_prompt(
         title=meeting.title,
         meeting_date=meeting.meeting_date,
@@ -145,7 +124,7 @@ async def analyse_and_apply(db: Session, meeting: Meeting) -> None:
 
     analysis = await analyse_meeting(prompt)
 
-    stats = tracker.apply_analysis(db, meeting, analysis, excluded)
+    stats = tracker.apply_analysis(db, meeting, analysis)
     data = analysis.model_dump()
     data["stats"] = stats
     meeting.summary = data
@@ -200,7 +179,6 @@ async def process_meeting(meeting_id: str, turns: Optional[List[Dict[str, Any]]]
                 store_turns(db, meeting, fetched)
             elif turns is not None:
                 store_turns(db, meeting, turns)
-            await collect_post_call_chat(db, meeting)
             await analyse_and_apply(db, meeting)
         except (AnalysisError, MeetStreamError) as exc:
             db.rollback()

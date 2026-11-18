@@ -83,7 +83,7 @@ def update(u: EmployeeUpdate) -> Dict:
 def participant(p: MeetingParticipant) -> Dict:
     return {"id": p.id, "display_name": p.display_name, "employee_id": p.employee_id,
             "employee_name": p.employee.name if p.employee else None, "mapping": p.mapping,
-            "joined_late": p.joined_late, "notice_sent": p.notice_sent, "opted_out": p.opted_out,
+            "joined_late": p.joined_late,
             "is_bot": p.is_bot, "first_seen_at": iso(p.first_seen_at)}
 
 

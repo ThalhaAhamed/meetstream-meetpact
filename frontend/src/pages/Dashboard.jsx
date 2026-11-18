@@ -34,7 +34,7 @@ function TrendChart({ data }) {
 const ATTN = {
   overdue: ['Overdue', 'bg-pop-red', Clock],
   blocker: ['Blocked', 'bg-pop-yellow', AlertOctagon],
-  carried: ['Keeps slipping', 'bg-pop-lilac', Repeat],
+  carried: ['Keeps slipping', 'bg-pop-orange', Repeat],
 }
 
 // The focal point: what needs a manager's attention right now.
@@ -100,12 +100,12 @@ export default function Dashboard() {
         <div className="space-y-5">
           <NeedsAttention items={data.attention || []} unreviewed={data.totals.unreviewed} />
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-            <Stat label="People" value={data.totals.employees} tone="lilac" />
-            <Stat label="Open work items" value={data.totals.open} tone="sky" />
-            <Stat label="Done this week" value={data.totals.completed_week} tone="mint" />
-            <Stat label="Overdue" value={data.totals.overdue} tone={data.totals.overdue ? 'red' : 'peach'} />
-            <Stat label="Open blockers" value={data.totals.blockers} tone="amber" />
-            <Stat label="Meetings this week" value={data.totals.meetings_week} tone="pink" hint={`${data.totals.unreviewed} updates awaiting review`} />
+            <Stat label="People" value={data.totals.employees} />
+            <Stat label="Open work items" value={data.totals.open} />
+            <Stat label="Done this week" value={data.totals.completed_week} tone={data.totals.completed_week ? 'mint' : undefined} />
+            <Stat label="Overdue" value={data.totals.overdue} tone={data.totals.overdue ? 'red' : undefined} />
+            <Stat label="Open blockers" value={data.totals.blockers} tone={data.totals.blockers ? 'amber' : undefined} />
+            <Stat label="Meetings this week" value={data.totals.meetings_week} hint={`${data.totals.unreviewed} updates awaiting review`} />
           </div>
 
           <div className="grid gap-5 lg:grid-cols-3">
@@ -131,7 +131,7 @@ export default function Dashboard() {
                       {e.completed_week > 0 && <Badge tone="green">{e.completed_week} done</Badge>}
                       {e.overdue > 0 && <Badge tone="red">{e.overdue} overdue</Badge>}
                       {e.open_blockers > 0 && <Badge tone="amber">{e.open_blockers} blocked</Badge>}
-                      {e.carried_over > 0 && <Badge tone="violet">{e.carried_over} carried</Badge>}
+                      {e.carried_over > 0 && <Badge tone="peach">{e.carried_over} carried</Badge>}
                     </div>
                   </Link>
                 ))}
@@ -144,7 +144,7 @@ export default function Dashboard() {
                 <div className="px-5 py-4"><TrendChart data={data.trend} /></div>
               </Card>
               <Card>
-                <CardHeader title="Next 48 hours" icon={CalendarClock} action={<Link to="/schedules" className="text-xs font-bold text-ink-950 underline decoration-2 underline-offset-2 hover:bg-pop-yellow">Schedules</Link>} />
+                <CardHeader title="Next 48 hours" icon={CalendarClock} action={<Link to="/schedules" className="text-xs font-bold text-ink-950 underline decoration-2 underline-offset-2 hover:bg-accent-soft">Schedules</Link>} />
                 <div className="divide-y divide-ink-950/15">
                   {(upcoming.data || []).slice(0, 5).map((u) => (
                     <div key={u.schedule_id + u.at} className="flex items-center justify-between gap-2 px-5 py-2.5 text-sm">
@@ -176,7 +176,7 @@ export default function Dashboard() {
               </div>
             </Card>
             <Card>
-              <CardHeader title="Projects" icon={FolderKanban} action={<Link to="/projects" className="text-xs font-bold text-ink-950 underline decoration-2 underline-offset-2 hover:bg-pop-yellow">All</Link>} />
+              <CardHeader title="Projects" icon={FolderKanban} action={<Link to="/projects" className="text-xs font-bold text-ink-950 underline decoration-2 underline-offset-2 hover:bg-accent-soft">All</Link>} />
               <div className="space-y-3 px-5 py-4">
                 {data.projects.length === 0 && <p className="text-sm text-ink-400">No projects yet.</p>}
                 {data.projects.map((p) => (
@@ -189,7 +189,7 @@ export default function Dashboard() {
               </div>
             </Card>
             <Card>
-              <CardHeader title="Recent meetings" icon={Video} action={<Link to="/meetings" className="text-xs font-bold text-ink-950 underline decoration-2 underline-offset-2 hover:bg-pop-yellow">All</Link>} />
+              <CardHeader title="Recent meetings" icon={Video} action={<Link to="/meetings" className="text-xs font-bold text-ink-950 underline decoration-2 underline-offset-2 hover:bg-accent-soft">All</Link>} />
               <div className="divide-y divide-ink-950/15">
                 {data.recent_meetings.length === 0 && <Empty title="No meetings yet" />}
                 {data.recent_meetings.map((m) => (

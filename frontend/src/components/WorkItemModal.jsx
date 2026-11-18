@@ -64,7 +64,7 @@ export default function WorkItemModal({ itemId, onClose, onSaved, canEdit }) {
             {canEdit && <Field label="Why the change?" hint="Stored in the item's history."><Input value={form.note} placeholder="e.g. AI misheard the deadline" onChange={(e) => setForm({ ...form, note: e.target.value })} /></Field>}
             <div className="rounded-lg bg-ink-50 px-3 py-2 text-xs text-ink-600">
               <p>{item.employee_name || 'Unassigned'}{item.project_name && ` · ${item.project_name}`} · {item.source === 'ai' ? 'Recorded by AI' : 'Added by hand'}</p>
-              {item.created_meeting_id && <Link className="font-bold text-ink-950 underline decoration-2 underline-offset-2 hover:bg-pop-yellow" to={`/meetings/${item.created_meeting_id}`} onClick={onClose}>Open the meeting it came from</Link>}
+              {item.created_meeting_id && <Link className="font-bold text-ink-950 underline decoration-2 underline-offset-2 hover:bg-accent-soft" to={`/meetings/${item.created_meeting_id}`} onClick={onClose}>Open the meeting it came from</Link>}
             </div>
             <div className="rounded-lg border border-ink-200 p-3">
               <p className="mb-2 text-xs font-medium text-ink-700">Task tool</p>
@@ -72,7 +72,7 @@ export default function WorkItemModal({ itemId, onClose, onSaved, canEdit }) {
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="capitalize">{item.external.provider}</span>
                   <span className="text-ink-500">status: {item.external.status || 'unknown'}</span>
-                  {item.external.url && <a href={item.external.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-ink-950 underline decoration-2 underline-offset-2 hover:bg-pop-yellow">Open <ExternalLink className="h-3 w-3" /></a>}
+                  {item.external.url && <a href={item.external.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-ink-950 underline decoration-2 underline-offset-2 hover:bg-accent-soft">Open <ExternalLink className="h-3 w-3" /></a>}
                   <Button size="sm" variant="secondary" onClick={sync} loading={busy}>Sync status</Button>
                 </div>
               ) : integrations.length ? (

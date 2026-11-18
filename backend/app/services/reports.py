@@ -52,7 +52,7 @@ def render_meeting_report(db: Session, meeting: Meeting, visible_employee: Optio
     when = meeting.started_at or meeting.scheduled_at or meeting.created_at
     attendees = [p for p in meeting.participants if not p.is_bot]
     att = ", ".join(
-        (p.employee.name if p.employee else p.display_name) + (" (opted out)" if p.opted_out else "") for p in attendees
+        (p.employee.name if p.employee else p.display_name) for p in attendees
     )
     action_lines = []
     for a in s.get("action_items", []):

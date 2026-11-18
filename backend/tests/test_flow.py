@@ -35,7 +35,7 @@ def test_plan_then_outcome_and_carry_over(db, people):
     tracker.apply_analysis(db, m1, _analysis(_report(priya, planned=["Build export API", "Write docs"], new_work_items=[
         NewWorkItem(title="Build export API", status="planned", due_date="2026-11-18", project=None),
         NewWorkItem(title="Write docs", status="planned", due_date=None, project=None),
-    ])), set())
+    ])))
     db.commit()
     items = {w.title: w for w in tracker.open_items(db, priya.id)}
     assert set(items) == {"Build export API", "Write docs"}
@@ -44,7 +44,7 @@ def test_plan_then_outcome_and_carry_over(db, people):
     m2 = _meeting(db, "evening")
     stats = tracker.apply_analysis(db, m2, _analysis(_report(priya, completed=["Build export API"], existing_item_updates=[
         ExistingItemUpdate(work_item_id=items["Build export API"].id, new_status="completed", note="done", due_date=None)
-    ], blockers=["Waiting on design review"])), set())
+    ], blockers=["Waiting on design review"])))
     db.commit()
     assert stats["carried_over"] == 1 and stats["blockers"] == 1
     assert db.get(WorkItem, items["Build export API"].id).status == "completed"
@@ -52,23 +52,22 @@ def test_plan_then_outcome_and_carry_over(db, people):
     assert docs.carry_count == 1 and [e.kind for e in docs.events] == ["created", "carried_over"]
 
     # Re-processing the same meeting must not double count.
-    stats = tracker.apply_analysis(db, m2, _analysis(_report(priya)), set())
+    stats = tracker.apply_analysis(db, m2, _analysis(_report(priya)))
     db.commit()
     assert db.get(WorkItem, docs.id).carry_count == 1
     assert db.query(EmployeeUpdate).filter_by(meeting_id=m2.id).count() == 1
 
 
-def test_duplicate_new_items_are_merged_and_opted_out_skipped(db, people):
+def test_duplicate_new_items_are_merged(db, people):
     sam, lena = people["emps"]["sam"], people["emps"]["lena"]
     m = _meeting(db, "general")
     tracker.apply_analysis(db, m, _analysis(
         _report(sam, new_work_items=[NewWorkItem(title="Fix date picker bug", status="in_progress", due_date=None, project=None)]),
-        _report(lena, new_work_items=[NewWorkItem(title="Secret stuff", status="planned", due_date=None, project=None)]),
-    ), {"lena fischer"})
+    ))
     m2 = _meeting(db, "general")
     tracker.apply_analysis(db, m2, _analysis(
         _report(sam, new_work_items=[NewWorkItem(title="Fix the date-picker bug", status="completed", due_date=None, project=None)]),
-    ), set())
+    ))
     db.commit()
     sam_items = db.query(WorkItem).filter_by(employee_id=sam.id).all()
     assert len(sam_items) == 1 and sam_items[0].status == "completed"
@@ -114,7 +113,7 @@ def test_employee_review_and_correction(client, db, people):
     e = people["emps"]
     m = _meeting(db, "morning")
     tracker.apply_analysis(db, m, _analysis(_report(e["sam"], new_work_items=[
-        NewWorkItem(title="Wrong title", status="planned", due_date=None, project=None)])), set())
+        NewWorkItem(title="Wrong title", status="planned", due_date=None, project=None)])))
     db.commit()
     item = db.query(WorkItem).filter_by(employee_id=e["sam"].id).one()
     upd = db.query(EmployeeUpdate).filter_by(employee_id=e["sam"].id).one()
@@ -168,40 +167,10 @@ def test_launch_payload_and_consent_flow(client, db, people, monkeypatch):
 
     monkeypatch.setattr(MeetStreamClient, "participants", participants2)
     asyncio.run(watch_sweep())
-    assert len(sent) == 2 and "Sam Okafor" in sent[1]  # late joiner greeted
-    asyncio.run(watch_sweep())
-    assert len(sent) == 2  # only once
+    assert len(sent) == 1  # one notice only, no per-person messages
     d = client.get(f"/api/meetings/{r.json()['id']}").json()
-    assert [e["kind"] for e in d["consent_events"]] == ["notice_sent", "late_joiner_notice"]
-
-
-def test_stale_chat_commands_are_not_replayed(db, monkeypatch):
-    """A 'resume recording' typed while recording was a no-op; it must not
-    resume a privacy pause made later from the dashboard."""
-    from app.services import consent
-
-    calls = []
-
-    async def resume(self, bot_id):
-        calls.append("resume")
-        return {}
-
-    async def send_message(self, bot_id, message):
-        return {}
-
-    monkeypatch.setattr(MeetStreamClient, "resume_recording", resume)
-    monkeypatch.setattr(MeetStreamClient, "send_message", send_message)
-    m = Meeting(title="C", bot_id="bot_c", bot_status="recording")
-    db.add(m)
-    db.commit()
-    chats = [{"author": "Sam", "text": "resume recording", "at": ""}]
-    asyncio.run(consent.apply_chat_commands(db, m, chats, live=True))  # no-op, consumed
-    m.recording_paused = True  # organizer pauses from the dashboard
-    db.commit()
-    asyncio.run(consent.apply_chat_commands(db, m, chats, live=True))
-    assert calls == [] and m.recording_paused is True
-    asyncio.run(consent.apply_chat_commands(db, m, chats + [{"author": "Sam", "text": "resume recording", "at": ""}], live=True))
-    assert calls == ["resume"]  # a new message still works
+    assert [e["kind"] for e in d["consent_events"]] == ["notice_sent"]
+    assert {p["display_name"] for p in d["participants"]} >= {"Priya Raman", "Sam Okafor"}
 
 
 def test_unassigned_item_hidden_from_employees(client, db, people):
@@ -213,20 +182,16 @@ def test_unassigned_item_hidden_from_employees(client, db, people):
     assert client.get(f"/api/work-items/{item.id}").status_code == 200
 
 
-def test_post_call_pipeline_with_opt_out(client, db, people, monkeypatch):
+def test_post_call_pipeline(client, db, people, monkeypatch):
     async def get_transcript(self, tid):
         return [{"speaker": "Priya Raman", "transcript": "I shipped the export."}, {"speaker": "Sam Okafor", "transcript": "Private stuff."}]
 
-    async def chats(self, bot_id):
-        return [{"sender_name": "Sam Okafor", "message": "opt out"}]
-
     async def fake_analyse(prompt):
-        assert "Private stuff" not in prompt and "I shipped the export" in prompt
+        assert "Private stuff" in prompt and "I shipped the export" in prompt
         p = people["emps"]["lead"]
         return _analysis(_report(p, completed=["Ship export"], new_work_items=[NewWorkItem(title="Ship export", status="completed", due_date=None, project=None)]))
 
     monkeypatch.setattr(MeetStreamClient, "get_transcript", get_transcript)
-    monkeypatch.setattr(MeetStreamClient, "chats", chats)
     monkeypatch.setattr("app.services.processing.analyse_meeting", fake_analyse)
 
     m = Meeting(title="Sync", bot_id="bot_9", transcript_id="tr_9", bot_status="ended", processing_status="waiting", meeting_date=date.today())
@@ -237,8 +202,8 @@ def test_post_call_pipeline_with_opt_out(client, db, people, monkeypatch):
     assert asyncio.run(process_meeting(m.id)) == "done"
     db.expire_all()
     m = db.get(Meeting, m.id)
-    assert any(s.redacted for s in m.segments)
-    assert "Ship export" in m.report_md and "(opted out)" in m.report_md
+    assert len(m.segments) == 2
+    assert "Ship export" in m.report_md
 
 
 def test_webhook_dedupe_and_stop(client, db, monkeypatch):
@@ -268,46 +233,6 @@ def test_mcp_requires_token(client, db):
     assert {t["name"] for t in r.json()["result"]["tools"]} == {"get_person_context", "list_standup_roster"}
 
 
-def test_consent_reminder_when_roster_unavailable(client, db, monkeypatch):
-    """Live test: get_participants answers 404 during the call, so late joiners
-    can't be seen. Without a public URL the bot re-posts a reminder instead."""
-    from datetime import timedelta
-
-    from app.models import ConsentEvent
-    from app.services.meetstream import MeetStreamError
-    from app.services.workers import watch_sweep
-
-    sent = []
-
-    async def status(self, bot_id):
-        return "InMeeting"
-
-    async def participants(self, bot_id):
-        raise MeetStreamError("MeetStream returned 404: Participants file not found for this bot", status=404)
-
-    async def chats(self, bot_id):
-        from app.services.meetstream import NotReady
-        raise NotReady("Not ready yet", status=202)
-
-    async def send_message(self, bot_id, message):
-        sent.append(message)
-        return {}
-
-    for n, f in dict(status=status, participants=participants, chats=chats, send_message=send_message).items():
-        monkeypatch.setattr(MeetStreamClient, n, f)
-    m = Meeting(title="R", bot_id="bot_r", bot_status="joining")
-    db.add(m)
-    db.commit()
-    asyncio.run(watch_sweep())
-    asyncio.run(watch_sweep())
-    assert len(sent) == 1  # the notice; no reminder yet
-    ev = db.query(ConsentEvent).filter_by(meeting_id=m.id).one()
-    ev.at = ev.at - timedelta(minutes=11)
-    db.commit()
-    asyncio.run(watch_sweep())
-    assert len(sent) == 2 and sent[1].startswith("Reminder")
-
-
 def test_late_added_employee_is_linked_on_reanalysis(db, people, monkeypatch):
     """Live test: the speaker was seen before their employee profile existed,
     so the meeting stayed 'unmatched' even after the profile was created."""
@@ -334,14 +259,14 @@ def test_work_listed_only_in_update_lists_is_tracked(db, people):
     sam = people["emps"]["sam"]
     m = _meeting(db, "general")
     stats = tracker.apply_analysis(db, m, _analysis(_report(sam, in_progress=["Finish invoice page"],
-                                                            planned=["Fix slow API response time"])), set())
+                                                            planned=["Fix slow API response time"])))
     db.commit()
     items = {w.title: w.status for w in db.query(WorkItem).filter_by(employee_id=sam.id)}
     assert items == {"Finish invoice page": "in_progress", "Fix slow API response time": "planned"}
     assert stats["items_created"] == 2
     # Listed again next meeting as completed -> same item, not a duplicate.
     m2 = _meeting(db, "general")
-    tracker.apply_analysis(db, m2, _analysis(_report(sam, completed=["Finish invoice page"])), set())
+    tracker.apply_analysis(db, m2, _analysis(_report(sam, completed=["Finish invoice page"])))
     db.commit()
     items = {w.title: w.status for w in db.query(WorkItem).filter_by(employee_id=sam.id)}
     assert items["Finish invoice page"] == "completed" and len(items) == 2
@@ -353,7 +278,7 @@ def test_commitment_already_applied_as_deadline_is_not_duplicated(db, people):
     sam = people["emps"]["sam"]
     m1 = _meeting(db, "general")
     tracker.apply_analysis(db, m1, _analysis(_report(sam, new_work_items=[
-        NewWorkItem(title="Finish the invoice page", status="in_progress", due_date=None, project=None)])), set())
+        NewWorkItem(title="Finish the invoice page", status="in_progress", due_date=None, project=None)])))
     db.commit()
     item = db.query(WorkItem).filter_by(employee_id=sam.id).one()
     from app.services.extraction import Commitment
@@ -361,7 +286,7 @@ def test_commitment_already_applied_as_deadline_is_not_duplicated(db, people):
     m2 = _meeting(db, "general")
     tracker.apply_analysis(db, m2, _analysis(_report(
         sam, existing_item_updates=[ExistingItemUpdate(work_item_id=item.id, new_status="unchanged", note="n", due_date="2026-11-18")],
-        commitments=[Commitment(text="Will be done with it this evening", due_date="2026-11-18")])), set())
+        commitments=[Commitment(text="Will be done with it this evening", due_date="2026-11-18")])))
     db.commit()
     items = db.query(WorkItem).filter_by(employee_id=sam.id).all()
     assert len(items) == 1 and str(items[0].due_date) == "2026-11-18"
@@ -371,7 +296,7 @@ def test_vague_update_lines_do_not_become_items(db, people):
     """Live stand-up test: 'Finish the current task today' became its own work item."""
     sam = people["emps"]["sam"]
     m = _meeting(db, "general")
-    tracker.apply_analysis(db, m, _analysis(_report(sam, planned=["Finish the current task today", "Write the export API docs"])), set())
+    tracker.apply_analysis(db, m, _analysis(_report(sam, planned=["Finish the current task today", "Write the export API docs"])))
     db.commit()
     assert [w.title for w in db.query(WorkItem).filter_by(employee_id=sam.id)] == ["Write the export API docs"]
 

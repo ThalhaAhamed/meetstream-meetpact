@@ -70,7 +70,7 @@ export default function AppShell({ children }) {
         {nav.map(([to, label, Icon]) => (
           <NavLink key={to + label} to={to} end={to === '/'}
             className={({ isActive }) => cx('flex items-center gap-2.5 rounded-md border-2 px-3 py-1.5 text-sm font-bold transition-[background-color,box-shadow] duration-150 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
-              isActive ? 'border-ink-950 bg-pop-yellow text-ink-950 shadow-press' : 'border-transparent text-ink-800 hover:border-ink-950 hover:bg-white')}>
+              isActive ? 'border-ink-950 bg-accent text-ink-950 shadow-press' : 'border-transparent text-ink-800 hover:border-ink-950 hover:bg-white')}>
             <Icon className="h-4 w-4" strokeWidth={2.25} />{label}
           </NavLink>
         ))}
@@ -88,14 +88,14 @@ export default function AppShell({ children }) {
 
   return (
     <div className="min-h-[100dvh] lg:flex">
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:border-2 focus:border-ink-950 focus:bg-pop-yellow focus:px-3 focus:py-2 focus:text-sm focus:font-bold focus:shadow-card">Skip to content</a>
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:border-2 focus:border-ink-950 focus:bg-accent focus:px-3 focus:py-2 focus:text-sm focus:font-bold focus:shadow-card">Skip to content</a>
 
       {/* Mobile top bar */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b-2 border-ink-950 bg-ink-50 px-4 py-3 lg:hidden">
         <Logo />
         <div className="flex gap-2">
           <button onClick={() => setPalette(true)} aria-label="Search" className="rounded-md border-2 border-ink-950 bg-white p-1.5 shadow-press"><Search className="h-4 w-4" /></button>
-          <button onClick={() => setDrawer(true)} aria-label="Open menu" className="rounded-md border-2 border-ink-950 bg-pop-yellow p-1.5 shadow-press"><Menu className="h-4 w-4" /></button>
+          <button onClick={() => setDrawer(true)} aria-label="Open menu" className="rounded-md border-2 border-ink-950 bg-accent p-1.5 shadow-press"><Menu className="h-4 w-4" /></button>
         </div>
       </header>
 

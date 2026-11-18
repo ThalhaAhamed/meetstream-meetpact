@@ -170,8 +170,6 @@ class Meeting(Base):
     # Consent
     consent_notice_sent: Mapped[bool] = mapped_column(Boolean, default=False)
     recording_paused: Mapped[bool] = mapped_column(Boolean, default=False)
-    # Chat messages already consumed as live commands (see consent.apply_chat_commands).
-    chat_cursor: Mapped[int] = mapped_column(Integer, default=0)
     # Set once the report has been emailed / posted, so re-analysis does not resend it.
     report_delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     # When the transcript (here) and the recording (at MeetStream) were deleted.
@@ -202,8 +200,6 @@ class MeetingParticipant(Base):
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_left_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     joined_late: Mapped[bool] = mapped_column(Boolean, default=False)
-    notice_sent: Mapped[bool] = mapped_column(Boolean, default=False)
-    opted_out: Mapped[bool] = mapped_column(Boolean, default=False)
     is_bot: Mapped[bool] = mapped_column(Boolean, default=False)
 
     meeting: Mapped[Meeting] = relationship(back_populates="participants")
@@ -232,7 +228,7 @@ class ConsentEvent(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
     meeting_id: Mapped[str] = mapped_column(ForeignKey("meetings.id", ondelete="CASCADE"), index=True)
     kind: Mapped[str] = mapped_column(String(40))
-    # notice_sent | late_joiner_notice | paused | resumed | removed | objection | opt_out | denied
+    # activity log: notice_sent | paused | resumed | removed | denied | data_deleted
     participant: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     detail: Mapped[str] = mapped_column(Text, default="")
     actor: Mapped[str] = mapped_column(String(255), default="bot")

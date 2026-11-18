@@ -39,7 +39,7 @@ export default function Ask() {
       </form>
       {!answer && !busy && !error && (
         <div className="mb-6 flex flex-wrap gap-2">
-          {EXAMPLES.map((ex) => <button key={ex} onClick={() => run(ex)} className="rounded-md border-2 border-ink-950 bg-white px-2.5 py-1 text-xs font-bold shadow-press hover:bg-pop-yellow">{ex}</button>)}
+          {EXAMPLES.map((ex) => <button key={ex} onClick={() => run(ex)} className="rounded-md border-2 border-ink-950 bg-white px-2.5 py-1 text-xs font-bold shadow-press hover:bg-accent-soft">{ex}</button>)}
         </div>
       )}
       <ErrorBox error={error} />
@@ -59,7 +59,7 @@ export default function Ask() {
             <div className="divide-y divide-ink-950/15">
               {!found.work_items.length && <Empty title="No matching work items" />}
               {found.work_items.map((w) => (
-                <Link key={w.id} to={w.employee_id ? `/people/${w.employee_id}` : '/board'} className="flex items-center gap-2 px-5 py-2.5 hover:bg-pop-yellow/30">
+                <Link key={w.id} to={w.employee_id ? `/people/${w.employee_id}` : '/board'} className="flex items-center gap-2 px-5 py-2.5 hover:bg-accent-soft">
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{w.title}</span>
                   <span className="text-xs text-ink-500">{w.employee_name}</span><ItemStatus status={w.status} />
                 </Link>
@@ -71,13 +71,13 @@ export default function Ask() {
             <div className="divide-y divide-ink-950/15">
               {!found.meetings.length && !found.updates.length && <Empty title="No matching meetings" />}
               {found.updates.slice(0, 8).map((u) => (
-                <Link key={u.id} to={`/meetings/${u.meeting_id}`} className="block px-5 py-2.5 hover:bg-pop-yellow/30">
+                <Link key={u.id} to={`/meetings/${u.meeting_id}`} className="block px-5 py-2.5 hover:bg-accent-soft">
                   <p className="text-sm"><span className="font-bold">{u.employee_name}</span> · {u.meeting_title} <span className="text-xs text-ink-500">{fmtDate(u.meeting_date)}</span></p>
                   <p className="line-clamp-2 text-xs text-ink-600">{u.summary}</p>
                 </Link>
               ))}
               {found.meetings.slice(0, 5).map((m) => (
-                <Link key={m.id} to={`/meetings/${m.id}`} className="flex items-center gap-2 px-5 py-2.5 hover:bg-pop-yellow/30">
+                <Link key={m.id} to={`/meetings/${m.id}`} className="flex items-center gap-2 px-5 py-2.5 hover:bg-accent-soft">
                   <span className="flex-1 text-sm font-medium">{m.title}</span><Badge>Meeting</Badge>
                 </Link>
               ))}
@@ -88,7 +88,7 @@ export default function Ask() {
               <CardHeader title="Said in meetings" icon={MessageSquareQuote} />
               <div className="divide-y divide-ink-950/15">
                 {found.transcript.slice(0, 8).map((t, i) => (
-                  <Link key={i} to={`/meetings/${t.meeting_id}`} className="block px-5 py-2.5 hover:bg-pop-yellow/30">
+                  <Link key={i} to={`/meetings/${t.meeting_id}`} className="block px-5 py-2.5 hover:bg-accent-soft">
                     <p className="text-xs text-ink-500">{t.meeting_title} · {fmtDate(t.date)} · <span className="font-bold text-ink-900">{t.speaker}</span></p>
                     <p className="line-clamp-2 text-sm">“{t.text}”</p>
                   </Link>

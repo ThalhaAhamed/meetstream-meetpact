@@ -38,7 +38,7 @@ export default function UpdateCard({ update, canReview, onChanged, showMeeting =
     <div className="rounded-lg border border-ink-200 bg-white p-4">
       <div className="mb-2 flex flex-wrap items-center gap-2">
         {showName && <span className="text-sm font-semibold">{update.employee_name}</span>}
-        {showMeeting && <Link to={`/meetings/${update.meeting_id}`} className="text-sm font-medium text-ink-900 hover:bg-pop-yellow">{update.meeting_title}</Link>}
+        {showMeeting && <Link to={`/meetings/${update.meeting_id}`} className="text-sm font-medium text-ink-900 hover:bg-accent-soft">{update.meeting_title}</Link>}
         <span className="text-xs text-ink-500">{fmtDate(update.meeting_date || update.created_at)}</span>
         <Badge tone={tone} className="ml-auto">{label}</Badge>
       </div>
@@ -59,7 +59,7 @@ export default function UpdateCard({ update, canReview, onChanged, showMeeting =
               <List items={update.commitments.map((c) => c.text + (c.due_date ? ` (by ${c.due_date})` : ''))} />
             </div>
           )}
-          {update.employee_note && <p className="mt-3 rounded bg-sky-50 px-2 py-1.5 text-xs text-sky-800">Note from {update.employee_name?.split(' ')[0]}: {update.employee_note}</p>}
+          {update.employee_note && <p className="mt-3 rounded border-2 border-ink-950 bg-pop-sky/40 px-2 py-1.5 text-xs text-ink-950">Note from {update.employee_name?.split(' ')[0]}: {update.employee_note}</p>}
           {canReview && (
             <div className="mt-3 flex gap-2">
               {update.review_status !== 'confirmed' && <Button size="sm" variant="secondary" icon={Check} loading={busy} onClick={() => send({ review_status: 'confirmed', employee_note: update.employee_note })}>Looks right</Button>}

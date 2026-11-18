@@ -57,8 +57,8 @@ Everything is in [docs/configuration.md](docs/configuration.md).
 
 ## ✨ Features
 
-- 🎙️ **AI notetaker** - joins on demand, on a schedule, or from your calendar. Posts a recording notice once admitted, reminds late joiners, honours "opt out" in the chat, and can be paused or removed from the meeting page.
-- 🧑‍✈️ **AI stand-up host** - opens the meeting, asks for consent, goes round each person by name, follows up on what they committed to last time, opens the floor ("anything else?"), recaps, and leaves. Powered by MeetStream's voice agents (Gemini Live by default).
+- 🎙️ **AI notetaker** - joins on demand, on a schedule, or from your calendar. Posts one short recording note once admitted, and can be paused or removed from the meeting page.
+- 🧑‍✈️ **AI stand-up host** - opens the meeting, goes round each person by name, follows up on what they committed to last time, opens the floor ("anything else?"), recaps, and leaves. Powered by MeetStream's voice agents (Gemini Live by default).
 - 📈 **Progress across meetings** - every update moves long-lived work items (planned → in progress → blocked → done). Unfinished work is carried forward; blockers stay open until someone says they're resolved; every change has a history with the meeting it came from.
 - 🚨 **Needs your attention** - the manager dashboard leads with overdue work, open blockers and work that keeps slipping.
 - 🗂️ **Work board** - every commitment as a drag-and-drop board, by person or project.
@@ -84,8 +84,8 @@ Everything is in [docs/configuration.md](docs/configuration.md).
  Schedules / calendar / "Send bot" ──► create_bot (join_at) ──────────────► MeetStream bot in the call
                                         + MIA voice agent for stand-ups        │
  watcher (polls) or webhooks ◄── status, roster, chat ◄────────────────────────┘
-   • admitted → recording notice; every 10 min a reminder for late joiners
- call ends → transcript → speakers matched to people → opt-outs removed
+   • admitted → one recording note in the chat
+ call ends → transcript → speakers matched to people
            → Claude / Gemini (typed JSON) → updates, work items, blockers, history
            → report → email / Slack → dashboards, board, Ask
 ```
@@ -101,7 +101,7 @@ deterministically (de-duplication, carry-over, history). Details: [docs/architec
 | [Configuration](docs/configuration.md) | Every environment variable |
 | [Architecture](docs/architecture.md) | Pipeline, data model, MeetStream APIs used |
 | [AI stand-up host](docs/standup.md) | How the voice agent runs a meeting, providers, limits |
-| [Privacy and consent](docs/privacy.md) | What the bot announces, opt-outs, access, retention |
+| [Privacy](docs/privacy.md) | The recording note, access, retention |
 | [Integrations](docs/integrations.md) | Calendar, email, Slack, task tools |
 | [Development](docs/development.md) | Running from source, demo data, tests, migrations |
 | [Troubleshooting](docs/troubleshooting.md) | Common problems and fixes |
@@ -110,7 +110,7 @@ deterministically (de-duplication, carry-over, history). Details: [docs/architec
 
 **Does it need a public URL?** No. Without one it polls MeetStream. If `cloudflared` is installed,
 MeetPact opens a tunnel by itself (only MeetStream's paths go through it), which adds live webhooks:
-late joiners are greeted by name, the stand-up host sees who is in the call and leaves right after its
+the stand-up host sees who is in the call and leaves right after its
 goodbye. Without it the host leaves shortly after everyone else has left.
 
 **Which AI does it use?** Claude or Gemini for analysis and Ask (`ANALYSIS_PROVIDER`). The stand-up

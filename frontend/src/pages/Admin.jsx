@@ -71,16 +71,10 @@ function SettingsTab() {
     <div className="grid gap-5 lg:grid-cols-3">
       <div className="space-y-5 lg:col-span-2">
         <Card>
-          <CardHeader title="Bot and recording consent" subtitle={admin ? 'What the bot says in the meeting chat' : 'Only admins can change these'} />
+          <CardHeader title="Bot and reports" subtitle={admin ? 'How the bot introduces itself and where reports go' : 'Only admins can change these'} />
           <div className="space-y-3 p-5">
             <Field label="Bot name"><Input disabled={!admin} value={values.bot_name} onChange={(e) => setValues({ ...values, bot_name: e.target.value })} /></Field>
-            <Field label="Recording notice" hint="Posted once the bot is admitted. {bot_name} and {organizer} are filled in."><Textarea disabled={!admin} value={values.consent_notice} onChange={(e) => setValues({ ...values, consent_notice: e.target.value })} /></Field>
-            <Field label="Late joiner notice" hint="{names} and {bot_name} are filled in."><Textarea disabled={!admin} value={values.late_joiner_notice} onChange={(e) => setValues({ ...values, late_joiner_notice: e.target.value })} /></Field>
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="Opt-out phrases" hint="Comma separated"><Input disabled={!admin} value={values.opt_out_keywords.join(', ')} onChange={(e) => setValues({ ...values, opt_out_keywords: split(e.target.value) })} /></Field>
-              <Field label="Pause phrases"><Input disabled={!admin} value={values.pause_keywords.join(', ')} onChange={(e) => setValues({ ...values, pause_keywords: split(e.target.value) })} /></Field>
-              <Field label="Resume phrases"><Input disabled={!admin} value={values.resume_keywords.join(', ')} onChange={(e) => setValues({ ...values, resume_keywords: split(e.target.value) })} /></Field>
-            </div>
+            <Field label="Recording notice" hint="Posted once in the chat when the bot is admitted. {bot_name} and {organizer} are filled in. Leave empty to post nothing."><Textarea disabled={!admin} value={values.consent_notice} onChange={(e) => setValues({ ...values, consent_notice: e.target.value })} /></Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Default full-report audience"><Select disabled={!admin} value={values.default_share_full.audience} onChange={(e) => setValues({ ...values, default_share_full: { audience: e.target.value, user_ids: [] } })}>
                 <option value="organizer">Only the organizer</option><option value="participants">All participants</option><option value="managers">Managers and team leads</option></Select></Field>
@@ -107,14 +101,6 @@ function SettingsTab() {
               <Field label="Delete transcripts and recordings after (days)" hint="0 keeps them. Reports and progress records are always kept. Recordings are also deleted at MeetStream.">
                 <Input type="number" min="0" disabled={!admin} value={values.transcript_retention_days ?? 0}
                   onChange={(e) => setValues({ ...values, transcript_retention_days: Math.max(0, parseInt(e.target.value || '0', 10)) })} />
-              </Field>
-              <label className="flex items-start gap-2 text-sm sm:col-span-2"><input type="checkbox" className="mt-0.5 h-4 w-4 accent-ink-950" disabled={!admin}
-                checked={!!values.standup_ask_consent} onChange={(e) => setValues({ ...values, standup_ask_consent: e.target.checked })} />
-                <span><span className="font-bold">AI stand-up asks out loud for recording consent</span><br />
-                <span className="text-xs text-ink-500">Off: the stand-up host just greets everyone and starts. The written notice is always posted in the chat.</span></span></label>
-              <Field label="Recording reminder every (minutes)" hint="Re-posted while recording so late joiners see it. 0 turns it off.">
-                <Input type="number" min="0" disabled={!admin} value={values.consent_reminder_minutes ?? 10}
-                  onChange={(e) => setValues({ ...values, consent_reminder_minutes: Math.max(0, parseInt(e.target.value || '0', 10)) })} />
               </Field>
             </div>
             <ErrorBox error={saveError} />

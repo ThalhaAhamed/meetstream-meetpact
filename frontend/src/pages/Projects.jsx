@@ -23,7 +23,7 @@ export default function Projects() {
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {data.map((p) => (
             <button key={p.id} onClick={() => setSelected(p.id === selected ? null : p.id)} className="text-left">
-              <Card className={cx('p-4 transition-shadow duration-200 hover:shadow-lift', selected === p.id && '-translate-x-0.5 -translate-y-0.5 bg-pop-yellow shadow-lift')}>
+              <Card className={cx('p-4 transition-shadow duration-200 hover:shadow-lift', selected === p.id && '-translate-x-0.5 -translate-y-0.5 bg-accent-soft shadow-lift')}>
                 <div className="flex items-center justify-between"><p className="font-medium">{p.name}</p><Badge tone={p.status === 'active' ? 'green' : 'gray'}>{p.status}</Badge></div>
                 <p className="mt-0.5 line-clamp-1 text-xs text-ink-500">{p.description || '—'}</p>
                 <div className="mt-3 flex items-end justify-between"><span className="text-2xl font-semibold tabular-nums">{p.percent}%</span><span className="text-xs text-ink-500">{p.completed}/{p.total} done</span></div>

@@ -112,7 +112,7 @@ export default function Meetings() {
             </Select>
           </Field>
           <MeetingFormBits form={send} setForm={setSend} teams={teams.data || []} projects={projects.data || []} />
-          <p className="rounded-lg bg-ink-50 px-3 py-2 text-xs text-ink-600">When admitted, the bot introduces itself as an AI notetaker in the chat, says the meeting is recorded and transcribed, and explains how to opt out. People who join later get the same notice.</p>
+          <p className="rounded-lg bg-ink-50 px-3 py-2 text-xs text-ink-600">When admitted, the bot posts one short note in the chat saying it is recording.</p>
           <ErrorBox error={formError} />
         </>}
       </Modal>
@@ -128,7 +128,7 @@ export default function Meetings() {
           <Field label="Transcript"><Textarea className="min-h-[180px] font-mono text-xs" value={imp.transcript} onChange={(e) => setImp({ ...imp, transcript: e.target.value })}
             placeholder={'Maya Chen: Hi all, quick round.\nPriya Raman: Yesterday I finished the export API. Today I will add rate limiting, should be done by Thursday.\nSam Okafor: Still on the invoice page, blocked on the API response shape.'} /></Field>
           <MeetingFormBits form={imp} setForm={setImp} teams={teams.data || []} projects={projects.data || []} />
-          {env && !env.analysis_configured && <p className="text-xs text-amber-700">No AI key is set on the server (ANTHROPIC_API_KEY or GEMINI_API_KEY), so the analysis will fail until one is.</p>}
+          {env && !env.analysis_configured && <p className="text-xs font-medium text-signal-amber">No AI key is set on the server (ANTHROPIC_API_KEY or GEMINI_API_KEY), so the analysis will fail until one is.</p>}
           <ErrorBox error={formError} />
         </>}
       </Modal>

@@ -75,13 +75,8 @@ def system_prompt(db: Session, meeting: Meeting, can_leave: bool, live_roster: b
         "You cannot see who is in the call. If someone does not answer after a moment, say you will skip them. "
         "If someone not on the list speaks up, include them."
     )
-    consent = (
-        "Your first message greeted everyone and asked whether recording is OK. Wait for the answer; if someone "
-        "objects, say the organizer can pause or remove you, and do not argue. Ask this only once."
-        if get_setting(db, "standup_ask_consent") else
-        "Your first message greeted everyone. The organizer has already told people the meeting is recorded, so "
-        "do not ask about recording or consent."
-    )
+    consent = ("Your first message greeted everyone. The organizer has already told people the meeting is "
+               "recorded, so do not ask about recording or consent.")
     return f"""You are {get_setting(db, 'bot_name')}, an AI stand-up facilitator running a live team meeting from start to finish. You speak out loud, so keep every turn short and natural (one or two sentences). You lead and keep a brisk pace: people should never have to tell you what comes next or ask whether you are still there.
 
 Run the meeting in these phases, in order, exactly once each:
@@ -151,8 +146,7 @@ def agent_payload(db: Session, meeting: Meeting, mcp_token: str | None) -> Dict[
         functions.append(leave_function(mcp_token))
     first = (
         f"Hi everyone, I'm {get_setting(db, 'bot_name')}, the AI facilitator for today's stand-up. "
-        + ("This meeting is recorded and transcribed for progress notes. Is everyone OK with that before we start?"
-           if get_setting(db, "standup_ask_consent") else "Let's get started.")
+        + "Let's get started."
     )
     payload: Dict[str, Any] = {
         "agent_name": f"Standup: {meeting.title}"[:60],

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  CheckSquare, Download, ExternalLink, FileX2, Send, Gavel, HelpCircle, ListChecks, Pause, Play, RefreshCw, ShieldCheck, Trash2, UserX,
+  CheckSquare, Download, ExternalLink, FileX2, Send, Gavel, HelpCircle, ListChecks, Pause, Play, RefreshCw, Trash2, UserX,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { api } from '../api'
@@ -14,9 +14,9 @@ import {
 } from '../components/ui'
 
 const LIVE = ['scheduled', 'joining', 'waiting_room', 'in_meeting', 'recording', 'paused']
-const CONSENT_LABEL = {
-  notice_sent: 'Recording notice posted', late_joiner_notice: 'Late joiner notified', paused: 'Recording paused',
-  resumed: 'Recording resumed', removed: 'Bot removed', opt_out: 'Participant opted out', denied: 'Host denied the bot',
+const ACTIVITY_LABEL = {
+  notice_sent: 'Recording notice posted', paused: 'Recording paused', resumed: 'Recording resumed',
+  removed: 'Bot removed', denied: 'Host denied the bot', data_deleted: 'Recording deleted',
 }
 
 function mmss(s) {
@@ -64,7 +64,7 @@ export default function MeetingDetail() {
     ['updates', 'Employee updates', m.updates.length],
     perms.full && ['transcript', 'Transcript'],
     ['participants', 'Participants', humans.length],
-    perms.full && ['consent', 'Consent log', m.consent_events?.length],
+    perms.full && ['activity', 'Activity', m.consent_events?.length],
     perms.share && ['sharing', 'Sharing'],
   ].filter(Boolean)
 
@@ -76,7 +76,7 @@ export default function MeetingDetail() {
           {fmtDateTime(m.started_at || m.scheduled_at || m.created_at)}
           <span>·</span>{m.mode === 'standup' ? 'AI-led stand-up' : 'Notetaker'}
           <BotStatus status={m.bot_status} /><ProcStatus status={m.processing_status} />
-          {m.meeting_link && <a href={m.meeting_link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-ink-950 underline decoration-2 underline-offset-2 hover:bg-pop-yellow">Meeting link <ExternalLink className="h-3 w-3" /></a>}
+          {m.meeting_link && <a href={m.meeting_link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-ink-950 underline decoration-2 underline-offset-2 hover:bg-accent-soft">Meeting link <ExternalLink className="h-3 w-3" /></a>}
         </span>}
         actions={<>
           {perms.manage && ['in_meeting', 'recording'].includes(m.bot_status) && <Button variant="secondary" icon={Pause} loading={busy === 'pause'} onClick={() => act('pause', () => api.pauseMeeting(id))}>Pause recording</Button>}
@@ -95,8 +95,8 @@ export default function MeetingDetail() {
         <ErrorBox error={actionError} />
         {m.processing_status === 'failed' && <ErrorBox error={m.processing_error} />}
         {m.stop_reason && ['not_admitted', 'denied', 'failed'].includes(m.bot_status) && <ErrorBox error={m.stop_reason} />}
-        {m.bot_status === 'waiting_room' && <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">The bot is in the waiting room. The host needs to admit it.</p>}
-        {m.recording_paused && LIVE.includes(m.bot_status) && <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">Recording is paused. Nothing is captured until it is resumed.</p>}
+        {m.bot_status === 'waiting_room' && <p className="rounded-md border-2 border-ink-950 bg-pop-yellow/50 px-3 py-2 text-sm font-medium text-ink-950">The bot is in the waiting room. The host needs to admit it.</p>}
+        {m.recording_paused && LIVE.includes(m.bot_status) && <p className="rounded-md border-2 border-ink-950 bg-pop-yellow/50 px-3 py-2 text-sm font-medium text-ink-950">Recording is paused. Nothing is captured until it is resumed.</p>}
         {!perms.full && <p className="rounded-lg bg-ink-100 px-3 py-2 text-sm text-ink-700">The organizer has not shared the full report with you. You can see the employee updates you have access to, including your own.</p>}
       </div>
 
@@ -172,8 +172,6 @@ export default function MeetingDetail() {
                   <div className="mt-0.5 flex flex-wrap gap-1">
                     {p.is_bot && <Badge>Bot</Badge>}
                     {p.joined_late && <Badge tone="amber">Joined late</Badge>}
-                    {p.notice_sent && !p.is_bot && <Badge tone="green"><ShieldCheck className="h-3 w-3" />Notified</Badge>}
-                    {p.opted_out && <Badge tone="red">Opted out</Badge>}
                   </div>
                 </div>
                 {!p.is_bot && (perms.manage ? (
@@ -182,25 +180,24 @@ export default function MeetingDetail() {
                     {(directory.data || []).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
                   </Select>
                 ) : <span className="text-sm text-ink-600">{p.employee_name || 'Not linked'}</span>)}
-                {p.employee_id && <Link to={`/people/${p.employee_id}`} className="text-xs font-bold text-ink-950 underline decoration-2 underline-offset-2 hover:bg-pop-yellow">Profile</Link>}
+                {p.employee_id && <Link to={`/people/${p.employee_id}`} className="text-xs font-bold text-ink-950 underline decoration-2 underline-offset-2 hover:bg-accent-soft">Profile</Link>}
               </div>
             ))}
             {!m.participants.length && <Empty title="No participants seen yet" />}
           </div>
         )}
 
-        {current === 'consent' && (
+        {current === 'activity' && (
           <div className="p-5">
-            <p className="mb-3 text-xs text-ink-500">Everything the bot did to inform participants and respect their choices.</p>
             <ol className="relative space-y-3 border-l border-ink-200 pl-4">
               {(m.consent_events || []).map((e, i) => (
                 <li key={i} className="text-sm">
                   <span className="absolute -left-[5px] mt-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-ink-950" />
-                  <p className="font-medium">{CONSENT_LABEL[e.kind] || e.kind}{e.participant && <span className="font-normal text-ink-600"> · {e.participant}</span>}</p>
+                  <p className="font-medium">{ACTIVITY_LABEL[e.kind] || e.kind}{e.participant && <span className="font-normal text-ink-600"> · {e.participant}</span>}</p>
                   <p className="text-xs text-ink-500">{e.detail} · {fmtDateTime(e.at)}{e.actor !== 'bot' && ` · by ${e.actor}`}</p>
                 </li>
               ))}
-              {!m.consent_events?.length && <p className="text-sm text-ink-400">No consent events yet.</p>}
+              {!m.consent_events?.length && <p className="text-sm text-ink-400">Nothing yet.</p>}
             </ol>
           </div>
         )}

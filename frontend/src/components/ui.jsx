@@ -25,7 +25,7 @@ export function CardHeader({ title, subtitle, action, icon: Icon }) {
 }
 
 const BUTTON = {
-  primary: 'border-2 border-ink-950 bg-pop-yellow text-ink-950 shadow-press hover:-translate-x-px hover:-translate-y-px hover:shadow-card active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-50',
+  primary: 'border-2 border-ink-950 bg-accent text-ink-950 shadow-press hover:-translate-x-px hover:-translate-y-px hover:shadow-card active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-50',
   secondary: 'border-2 border-ink-950 bg-white text-ink-950 shadow-press hover:-translate-x-px hover:-translate-y-px hover:shadow-card active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-50',
   ghost: 'border-2 border-transparent text-ink-800 hover:border-ink-950 hover:bg-white',
   danger: 'border-2 border-ink-950 bg-pop-red text-ink-950 shadow-press hover:-translate-x-px hover:-translate-y-px hover:shadow-card active:translate-x-0.5 active:translate-y-0.5 active:shadow-none',
@@ -55,6 +55,7 @@ const TONES = {
   amber: 'bg-pop-yellow',
   red: 'bg-pop-red',
   violet: 'bg-pop-lilac',
+  peach: 'bg-pop-orange',
 }
 
 export function Badge({ tone = 'gray', children, className }) {
@@ -62,7 +63,7 @@ export function Badge({ tone = 'gray', children, className }) {
 }
 
 const ITEM_STATUS = {
-  planned: ['gray', 'Planned'], in_progress: ['blue', 'In progress'], blocked: ['red', 'Blocked'],
+  planned: ['gray', 'Planned'], in_progress: ['blue', 'In progress'], blocked: ['amber', 'Blocked'],
   completed: ['green', 'Done'], dropped: ['gray', 'Dropped'],
 }
 export function ItemStatus({ status }) {
@@ -71,10 +72,10 @@ export function ItemStatus({ status }) {
 }
 
 const BOT_STATUS = {
-  pending: ['gray', 'Pending'], scheduled: ['violet', 'Scheduled'], joining: ['amber', 'Joining'],
+  pending: ['gray', 'Pending'], scheduled: ['blue', 'Scheduled'], joining: ['amber', 'Joining'],
   waiting_room: ['amber', 'In waiting room'], in_meeting: ['blue', 'In meeting'], recording: ['red', '● Recording'],
   paused: ['amber', 'Paused'], ended: ['gray', 'Ended'], not_admitted: ['red', 'Not admitted'], denied: ['red', 'Denied'],
-  failed: ['red', 'Failed'], cancelled: ['gray', 'Cancelled'], imported: ['violet', 'Imported'],
+  failed: ['red', 'Failed'], cancelled: ['gray', 'Cancelled'], imported: ['gray', 'Imported'],
 }
 const PROC_STATUS = {
   waiting: ['gray', 'Waiting for transcript'], fetching: ['amber', 'Fetching transcript'], analysing: ['amber', 'Analysing'],
@@ -124,7 +125,7 @@ export function ErrorBox({ error }) {
 export function Empty({ icon: Icon, title, children }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
-      {Icon && <span className="mb-3 inline-flex rounded-md border-2 border-ink-950 bg-pop-yellow p-2 shadow-press"><Icon className="h-5 w-5" strokeWidth={2.25} /></span>}
+      {Icon && <span className="mb-3 inline-flex rounded-md border-2 border-ink-950 bg-accent p-2 shadow-press"><Icon className="h-5 w-5" strokeWidth={2.25} /></span>}
       <p className="text-sm font-bold text-ink-950">{title}</p>
       {children && <div className="mt-1 max-w-sm text-xs text-ink-500">{children}</div>}
     </div>
@@ -142,7 +143,7 @@ export function Modal({ open, onClose, title, children, footer, wide }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink-950/50 p-4 pt-[8vh]" onMouseDown={onClose}>
       <div role="dialog" aria-modal="true" className={cx('w-full animate-fade-up rounded-lg border-2 border-ink-950 bg-white shadow-lift', wide ? 'max-w-3xl' : 'max-w-lg')} onMouseDown={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between rounded-t-md border-b-2 border-ink-950 bg-pop-yellow px-5 py-3">
+        <div className="flex items-center justify-between rounded-t-md border-b-2 border-ink-950 bg-accent px-5 py-3">
           <h2 className="text-base font-bold">{title}</h2>
           <button onClick={onClose} className="rounded border-2 border-transparent p-1 text-ink-950 hover:border-ink-950 hover:bg-white" aria-label="Close"><X className="h-4 w-4" /></button>
         </div>
@@ -170,10 +171,7 @@ export const Input = (p) => <input {...p} className={cx(INPUT, width(p.className
 export const Textarea = (p) => <textarea {...p} className={cx(INPUT, 'min-h-[90px]', width(p.className), p.className)} />
 export const Select = ({ children, ...p }) => <select {...p} className={cx(INPUT, 'pr-8', width(p.className), p.className)}>{children}</select>
 
-const STAT_FILL = {
-  red: 'bg-pop-red', amber: 'bg-pop-yellow', lilac: 'bg-pop-lilac', sky: 'bg-pop-sky',
-  mint: 'bg-pop-mint', pink: 'bg-pop-pink', peach: 'bg-pop-orange',
-}
+const STAT_FILL = { red: 'bg-pop-red', amber: 'bg-pop-yellow', mint: 'bg-pop-mint' }
 
 export function Stat({ label, value, tone, hint }) {
   return (
@@ -192,7 +190,7 @@ export function Tabs({ tabs, value, onChange }) {
       {tabs.map(([key, label, count]) => (
         <button key={key} onClick={() => onChange(key)}
           className={cx('rounded-md border-2 px-3 py-1 text-sm font-bold transition-[background-color,box-shadow] duration-150',
-            value === key ? 'border-ink-950 bg-pop-yellow shadow-press' : 'border-transparent text-ink-700 hover:border-ink-950 hover:bg-white')}>
+            value === key ? 'border-ink-950 bg-accent shadow-press' : 'border-transparent text-ink-700 hover:border-ink-950 hover:bg-white')}>
           {label}{count !== undefined && <span className="ml-1.5 rounded border border-ink-950 bg-white px-1 font-mono text-[11px]">{count}</span>}
         </button>
       ))}

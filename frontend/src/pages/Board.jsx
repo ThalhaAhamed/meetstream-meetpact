@@ -6,10 +6,10 @@ import { Avatar, Badge, ErrorBox, PageHeader, Select, Spinner, cx, fmtDate, useL
 import { useUser, isManager } from '../user'
 
 const COLUMNS = [
-  ['planned', 'Planned', 'bg-white'],
-  ['in_progress', 'In progress', 'bg-pop-sky/40'],
-  ['blocked', 'Blocked', 'bg-pop-red/30'],
-  ['completed', 'Done', 'bg-pop-mint/40'],
+  ['planned', 'Planned', 'bg-ink-100/60'],
+  ['in_progress', 'In progress', 'bg-pop-sky/30'],
+  ['blocked', 'Blocked', 'bg-pop-yellow/30'],
+  ['completed', 'Done', 'bg-pop-mint/30'],
 ]
 
 export default function Board() {
@@ -75,7 +75,7 @@ export default function Board() {
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
                       {w.employee_name && <span className="flex items-center gap-1 text-[11px] font-medium"><Avatar name={w.employee_name} size={6} />{w.employee_name.split(' ')[0]}</span>}
                       {w.due_date && <Badge tone={w.overdue ? 'red' : 'gray'}>{w.overdue ? 'Overdue ' : 'Due '}{fmtDate(w.due_date, { month: 'short', day: 'numeric' })}</Badge>}
-                      {w.carry_count >= 2 && <Badge tone="violet"><Repeat className="h-3 w-3" />{w.carry_count}×</Badge>}
+                      {w.carry_count >= 2 && <Badge tone="peach"><Repeat className="h-3 w-3" />{w.carry_count}×</Badge>}
                       {w.project_name && <span className="text-[11px] text-ink-500">{w.project_name}</span>}
                     </div>
                   </article>

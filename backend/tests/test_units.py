@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from app.models import Employee, Schedule
 from app.services import identity, recurrence
-from app.services.consent import normalize_chats, roster_names
+from app.services.consent import roster_names
 from app.services.meetstream import map_remote_status, stop_reason
 from app.services.transcript import normalize_transcript, parse_plain_transcript
 
@@ -83,14 +83,7 @@ def test_status_mapping_and_stop_reason():
     assert stop_reason({"event": "bot.stopped", "bot_status": "Denied"}) == "bot.denied"
 
 
-def test_chat_and_roster_normalisation():
-    chats = normalize_chats({"chats": [{"sender": {"name": "Sam"}, "message": "opt out please"}, {"text": ""}]})
-    assert chats == [{"author": "Sam", "text": "opt out please", "at": ""}]
-    # Shape observed live on Google Meet: names live in "speakers", keyed by deviceId.
-    meet = {"metadata": {}, "speakers": [{"deviceId": "d1", "name": "Thal"}, {"deviceId": "bot", "name": "Notetaker"}],
-            "chatMessages": [{"deviceId": "bot", "text": "Recording notice"}, {"deviceId": "d1", "text": "opt out", "timestamp": "t"}]}
-    assert normalize_chats(meet) == [{"author": "Notetaker", "text": "Recording notice", "at": ""},
-                                     {"author": "Thal", "text": "opt out", "at": "t"}]
+def test_roster_normalisation():
     assert roster_names([{"displayName": "A", "status": 1}, {"fullName": "B", "status": 2, "humanized_status": "Left"}]) == ["A"]
 
 

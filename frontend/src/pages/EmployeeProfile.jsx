@@ -24,13 +24,13 @@ function ItemsTable({ items, onOpen }) {
             <td className="px-4 py-2.5">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="font-medium text-ink-900">{w.title}</span>
-                {w.carry_count >= 2 && <Badge tone="violet"><Repeat className="h-3 w-3" />carried {w.carry_count}×</Badge>}
+                {w.carry_count >= 2 && <Badge tone="peach"><Repeat className="h-3 w-3" />carried {w.carry_count}×</Badge>}
                 {w.kind !== 'task' && <Badge>{w.kind === 'action_item' ? 'Action item' : 'Commitment'}</Badge>}
                 {w.external && <Badge tone="blue">{w.external.provider}</Badge>}
               </div>
             </td>
             <td className="px-2 py-2.5"><ItemStatus status={w.status} /></td>
-            <td className={`px-2 py-2.5 text-xs ${w.overdue ? 'font-semibold text-red-700' : 'text-ink-600'}`}>{w.due_date ? fmtDate(w.due_date) : '—'}{w.overdue && ' · overdue'}</td>
+            <td className={`px-2 py-2.5 text-xs ${w.overdue ? 'font-bold text-signal-red' : 'text-ink-600'}`}>{w.due_date ? fmtDate(w.due_date) : '—'}{w.overdue && ' · overdue'}</td>
             <td className="px-2 py-2.5 text-xs text-ink-600">{w.project_name || '—'}</td>
             <td className="px-4 py-2.5 text-right text-xs text-ink-500">{relTime(w.updated_at)}</td>
           </tr>
@@ -102,7 +102,7 @@ export function ProfileView({ data, reload, isSelf }) {
             {!blockers.length && <Empty icon={AlertOctagon} title="No blockers recorded" />}
             {blockers.map((b) => (
               <div key={b.id} className="flex items-center gap-3 px-4 py-3">
-                {b.status === 'open' ? <AlertOctagon className="h-4 w-4 shrink-0 text-amber-600" /> : <CheckCircle2 className="h-4 w-4 shrink-0 text-ink-950" />}
+                {b.status === 'open' ? <AlertOctagon className="h-4 w-4 shrink-0 text-signal-amber" /> : <CheckCircle2 className="h-4 w-4 shrink-0 text-ink-950" />}
                 <div className="min-w-0 flex-1">
                   <p className={`text-sm ${b.status === 'resolved' ? 'text-ink-400 line-through' : ''}`}>{b.description}</p>
                   <p className="text-[11px] text-ink-500">Raised {fmtDate(b.created_at)}{b.mention_count > 1 && ` · mentioned in ${b.mention_count} meetings`}{b.resolved_at && ` · resolved ${fmtDate(b.resolved_at)}`}</p>

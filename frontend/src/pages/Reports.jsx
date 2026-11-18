@@ -56,7 +56,7 @@ export default function Reports() {
                       <td className="px-2 py-2.5 tabular-nums">{e.updates}</td>
                       <td className="px-2 py-2.5"><span className="tabular-nums">{e.completed.length}</span>{e.completed.length > 0 && <p className="line-clamp-2 text-[11px] text-ink-500">{e.completed.join(', ')}</p>}</td>
                       <td className="px-2 py-2.5 tabular-nums">{e.open.length}</td>
-                      <td className="px-2 py-2.5 tabular-nums text-red-700">{e.overdue.length || ''}</td>
+                      <td className="px-2 py-2.5 tabular-nums font-bold text-signal-red">{e.overdue.length || ''}</td>
                       <td className="px-4 py-2.5 text-xs text-ink-600">{e.blockers.join('; ') || '—'}</td>
                     </tr>
                   ))}

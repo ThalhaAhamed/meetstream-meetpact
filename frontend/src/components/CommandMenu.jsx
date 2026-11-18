@@ -58,7 +58,7 @@ export default function CommandMenu({ open, onClose, nav }) {
       <div role="dialog" aria-modal="true" aria-label="Command menu" className="w-full max-w-xl animate-fade-up rounded-lg border-2 border-ink-950 bg-white shadow-lift" onMouseDown={(e) => e.stopPropagation()}>
         <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onKey}
           placeholder="Search people, meetings, work - or ask a question"
-          className="w-full rounded-t-md border-b-2 border-ink-950 bg-pop-yellow/30 px-4 py-3 text-base font-medium outline-none placeholder:text-ink-500" />
+          className="w-full rounded-t-md border-b-2 border-ink-950 bg-accent-soft px-4 py-3 text-base font-medium outline-none placeholder:text-ink-500" />
         <ul className="max-h-[50vh] overflow-y-auto p-2" role="listbox">
           {items.length === 0 && <li className="px-3 py-6 text-center text-sm text-ink-500">Type at least 3 letters to search meetings and work items.</li>}
           {items.map((it, i) => {
@@ -67,7 +67,7 @@ export default function CommandMenu({ open, onClose, nav }) {
               <li key={it.kind + it.label + i} role="option" aria-selected={i === active}>
                 <button onMouseEnter={() => setActive(i)} onClick={() => go(it)}
                   className={cx('flex w-full items-center gap-3 rounded-md border-2 px-3 py-2 text-left text-sm',
-                    i === active ? 'border-ink-950 bg-pop-yellow font-bold shadow-press' : 'border-transparent')}>
+                    i === active ? 'border-ink-950 bg-accent font-bold shadow-press' : 'border-transparent')}>
                   <Icon className="h-4 w-4 shrink-0" strokeWidth={2.25} />
                   <span className="min-w-0 flex-1 truncate">{it.label}</span>
                   <span className="shrink-0 text-[11px] font-medium text-ink-500">{it.kind}</span>

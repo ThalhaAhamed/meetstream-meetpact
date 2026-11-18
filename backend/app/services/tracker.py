@@ -174,7 +174,7 @@ def _find_duplicate(items: List[WorkItem], title: str) -> Optional[WorkItem]:
     return best if score >= 0.82 else None
 
 
-def apply_analysis(db: Session, meeting: Meeting, analysis: MeetingAnalysis, excluded_names: set[str]) -> Dict[str, int]:
+def apply_analysis(db: Session, meeting: Meeting, analysis: MeetingAnalysis) -> Dict[str, int]:
     """Write updates, work items and blockers. Returns counters for the log."""
     stats = {"updates": 0, "items_created": 0, "items_updated": 0, "carried_over": 0, "blockers": 0}
     employees = identity.active_employees(db)
@@ -197,8 +197,6 @@ def apply_analysis(db: Session, meeting: Meeting, analysis: MeetingAnalysis, exc
     touched_items: set[str] = set()
 
     for rep in analysis.employee_reports:
-        if identity.norm(rep.speaker_name) in excluded_names:
-            continue
         emp = by_id.get(rep.employee_id or "") or identity.match_employee(rep.speaker_name, employees)
         if emp is None or emp.id in reported:
             continue
@@ -322,8 +320,6 @@ def apply_analysis(db: Session, meeting: Meeting, analysis: MeetingAnalysis, exc
         owner = by_id.get(ai.owner_employee_id or "") or (
             identity.match_employee(ai.owner_name, employees) if ai.owner_name else None
         )
-        if owner and identity.norm(owner.name) in excluded_names:
-            continue
         pool = open_items(db, owner.id) if owner else list(
             db.scalars(select(WorkItem).where(WorkItem.employee_id.is_(None), WorkItem.status.in_(OPEN_STATUSES)))
         )

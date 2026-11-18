@@ -73,7 +73,7 @@ async def apply_status(meeting_id: str, new_status: str, reason: str | None = No
         db.commit()
         if new_status in IN_CALL_STATES and not meeting.consent_notice_sent:
             # Posted once the bot is admitted (a message sent from the waiting
-            # room is lost). Stand-up agents also announce it by voice.
+            # room is lost).
             await consent.send_notice(db, meeting)
         if new_status in FINISHED_STATES and meeting.mia_agent_id:
             await bots.cleanup_agent(db, meeting)
@@ -102,24 +102,12 @@ async def _watch_one(meeting_id: str) -> None:
         meeting = db.get(Meeting, meeting_id)
         if meeting.bot_status not in IN_CALL_STATES:
             return
-        # Late joiners: anyone new on the roster after the notice gets their own
-        # notice. MeetStream answers 404 here until the call ends (seen live), so
-        # without participant webhooks fall back to a periodic reminder.
-        roster_live = False
+        # Who is in the call. MeetStream usually answers 404 here until the call
+        # ends; participant webhooks (with a public URL) fill this in live.
         try:
             names = consent.roster_names(await meetstream.participants(bot_id))
-            roster_live = True
             if names:
-                await consent.greet_late_joiners(db, meeting, names)
-        except (MeetStreamError, NotReady):
-            pass
-        if not roster_live and not settings.public_url:
-            await consent.send_reminder_if_due(db, meeting)
-        # Chat commands (best effort - only if chat is available during the call).
-        try:
-            chats = consent.normalize_chats(await meetstream.chats(bot_id))
-            if chats:
-                await consent.apply_chat_commands(db, meeting, chats, live=True)
+                consent.register_participants(db, meeting, names)
         except (MeetStreamError, NotReady):
             pass
 

@@ -13,6 +13,4 @@
 | *No Anthropic credentials found* / *Gemini rejected the API key* | Analysis key missing or wrong. | Set `ANTHROPIC_API_KEY` or `GEMINI_API_KEY`, restart, then *Re-analyse*. |
 | A speaker isn't linked to anyone | Their meeting name doesn't match an employee name or alias. | Pick the person under the meeting's *Participants* tab (remembered as an alias), then *Re-analyse*. |
 | Lines from the AI host are attributed to a person | Overlapping voices in the transcript. | The analysis ignores host-style lines; correct anything left over from the person's profile. |
-| Typing "pause recording" in the chat does nothing | MeetStream returns the chat only after the call. | Use *Pause recording* on the meeting page. |
-| Late joiners aren't greeted by name | MeetStream exposes the roster only after the call. | A reminder is re-posted every 10 minutes; with `PUBLIC_URL`, join webhooks greet people by name. |
 | Webhooks never arrive | `PUBLIC_URL` isn't reachable from the internet. | Check `https://<PUBLIC_URL>/api/health` from outside. Polling keeps working without them. |

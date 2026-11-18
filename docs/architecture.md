@@ -6,12 +6,11 @@
                  ┌──────────── backend (FastAPI) ─────────────────────────────────┐
  Schedules ────► │ scheduler ──► create_bot (join_at)  ──────────────────────────────────► MeetStream
  "Send bot" ───► │                 + MIA agent for stand-ups                       │       bot in Zoom/Meet/Teams
-                 │ watcher (poll)  ◄── status, participants, chat ◄──────────────────────┤
- webhooks ─────► │   • on admission: post consent notice                           │
- (optional)      │   • new names on roster: late-joiner notice                     │
-                 │   • "pause recording" in chat: pause_recording                  │
+                 │ watcher (poll)  ◄── status, participants ◄────────────────────────────┤
+ webhooks ─────► │   • on admission: post the recording notice (once)              │
+ (optional)      │   • join/leave events: who is in the call                       │
                  │ on end ──► get_transcript ──► speakers → employees              │
-                 │           ──► opt-outs redacted ──► Claude (structured output)  │
+                 │           ──► Claude / Gemini (structured output)               │
                  │           ──► updates, work items, blockers, history ──► report │
                  └──────────────────────────────── SQLite ─────────────────────────┘
                                          ▲
@@ -41,9 +40,8 @@ the API has limits, the app says so.
 | Join a meeting, now or later | `POST /bots/create_bot` (with `join_at`, `automatic_leave`, `recording_config.transcript`, `retention`, `custom_attributes`, `Idempotency-Key`) |
 | Cancel a booked bot | `DELETE /calendar/scheduled_bots/{id}` |
 | Status | `GET /bots/{id}/status`, webhooks via `callback_url` (`bot.inmeeting`, `bot.stopped` + `bot_event`, `bot.done`, ...) |
-| Consent notice / late joiners | `POST /bots/{id}/send_message`, `GET /bots/{id}/get_participants`, `participant_events.join` via `realtime_endpoints` |
+| Recording notice / who is in the call | `POST /bots/{id}/send_message`, `GET /bots/{id}/get_participants`, `participant_events.join`/`.leave` via `realtime_endpoints` |
 | Privacy window | `POST /bots/{id}/pause_recording` / `resume_recording`, `GET /bots/{id}/remove_bot` |
-| Opt-outs | `GET /bots/{id}/get_chats` |
 | Transcript | `GET /bots/{id}/detail`, `GET /bots/{id}/transcriptions`, `GET /transcript/{id}/get_transcript` |
 | AI stand-up | `POST /mia` (pipeline voice agent with system prompt and MCP server), attached with `agent_config_id`; `DELETE /mia` afterwards |
 
@@ -58,13 +56,13 @@ are de-duplicated, and a stand-up bot gets `agent_config_id` only.
 ```
 backend/
   app/main.py                 FastAPI app, background workers, serves the built UI
-  app/models.py               tables: people, schedules, meetings, updates, work items, blockers, consent log
+  app/models.py               tables: people, schedules, meetings, updates, work items, blockers, activity log
   app/access.py               who may see what
   app/api/                    routes: auth, org (teams/projects/people/users/settings), meetings, progress, webhooks, mcp
   app/services/meetstream.py  MeetStream REST client
   app/services/bots.py        create_bot payload, pause/resume/remove, MIA lifecycle
   app/services/workers.py     scheduler + polling watcher (+ status transitions shared with webhooks)
-  app/services/consent.py     notices, late joiners, chat opt-outs, pause commands
+  app/services/consent.py     recording notice, activity log, participants
   app/services/processing.py  post-call pipeline
   app/services/extraction.py  Claude structured analysis
   app/services/tracker.py     applies the analysis: updates, items, carry-over, blockers

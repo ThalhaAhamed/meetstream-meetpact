@@ -10,33 +10,11 @@ from app.models import AppSetting
 
 DEFAULTS: Dict[str, Any] = {
     "bot_name": settings.BOT_NAME,
+    # Posted once in the meeting chat when the bot is admitted. Empty turns it off.
     "consent_notice": (
         "Hi everyone, I'm {bot_name}, an AI notetaker added by {organizer}. "
-        "This meeting is being recorded and transcribed to produce meeting notes and track work progress. "
-        "Reports are only shared with people the organizer chooses. "
-        "If you do not consent, type \"opt out\" in the chat and your contributions will be left out of the notes, "
-        "or ask the organizer to pause or remove me. Type \"pause recording\" to pause for everyone."
+        "This meeting is being recorded and transcribed for meeting notes."
     ),
-    "late_joiner_notice": (
-        "Welcome {names}. Heads-up: I'm {bot_name}, an AI notetaker, and this meeting is being recorded and "
-        "transcribed. Type \"opt out\" in the chat if you do not want your contributions in the notes."
-    ),
-    # MeetStream only exposes the roster after the call, so without a public URL
-    # (participant webhooks) late joiners cannot be detected live. Instead a short
-    # reminder is re-posted this often while recording. 0 turns it off.
-    "consent_reminder_minutes": 10,
-    # AI stand-up: the written notice is always posted in the chat; this adds
-    # a spoken "is everyone OK with recording?" before starting.
-    "standup_ask_consent": False,
-    "consent_reminder": (
-        "Reminder for anyone who just joined: I'm {bot_name}, an AI notetaker, and this meeting is being "
-        "recorded and transcribed. Type \"opt out\" in the chat to be left out of the notes."
-    ),
-    "pause_ack": "Recording paused at a participant's request. Nothing is being recorded until it is resumed.",
-    "resume_ack": "Recording has resumed.",
-    "opt_out_keywords": ["opt out", "opt-out", "do not record me", "don't record me", "no consent", "i do not consent"],
-    "pause_keywords": ["pause recording", "stop recording"],
-    "resume_keywords": ["resume recording"],
     # Default report sharing for meetings created without a schedule.
     "default_share_full": {"audience": "participants", "user_ids": []},
     "default_share_employee": {"audience": "managers", "user_ids": []},
@@ -70,7 +48,8 @@ def get_setting(db: Session, key: str) -> Any:
 def all_settings(db: Session) -> Dict[str, Any]:
     out = dict(DEFAULTS)
     for row in db.query(AppSetting).all():
-        out[row.key] = row.value
+        if row.key in DEFAULTS:  # ignore settings from older versions
+            out[row.key] = row.value
     return out
 
 
