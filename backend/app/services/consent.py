@@ -47,9 +47,25 @@ def notice_text(db: Session, meeting: Meeting) -> str:
     )
 
 
+_notice_in_flight: set = set()
+
+
 async def send_notice(db: Session, meeting: Meeting) -> bool:
-    """Post the recording notice once the bot is in the call."""
-    if meeting.consent_notice_sent or not meeting.bot_id:
+    """Post the recording notice once the bot is in the call. The lifecycle
+    webhook and the status poller can both get here at the same moment, so a
+    meeting being handled already is skipped."""
+    if meeting.consent_notice_sent or not meeting.bot_id or meeting.id in _notice_in_flight:
+        return False
+    _notice_in_flight.add(meeting.id)
+    try:
+        return await _send_notice(db, meeting)
+    finally:
+        _notice_in_flight.discard(meeting.id)
+
+
+async def _send_notice(db: Session, meeting: Meeting) -> bool:
+    db.refresh(meeting)
+    if meeting.consent_notice_sent:
         return False
     # Register everyone already in the call, so they are not later mistaken
     # for late joiners.

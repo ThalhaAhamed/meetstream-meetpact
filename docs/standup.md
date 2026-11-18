@@ -38,8 +38,10 @@ agent is deleted after the meeting.
 **Who is in the call.** MeetStream exposes the participant list only after the meeting, so by
 default the host does not see who joined: it calls on the team, skips people who don't answer and
 includes anyone who speaks up. With `PUBLIC_URL` set, MeetStream sends live join/leave events, and
-the host gets a `list_participants_now` tool (the automatic tunnel provides this too): it checks who is present before the round and again
-before the open floor, so it skips absent people and asks late joiners for their update. It can also
+the host gets a `list_participants_now` tool (the automatic tunnel provides this too): it checks who
+joined or left before the round and again before the open floor, so it skips people who left and asks
+late joiners for their update. MeetStream sends no join event for people who were already in the call
+when the bot arrived, so the host still calls on the expected team by name. It can also
 look up a late joiner's history through the `/mcp` endpoint (`get_person_context`). Late joiners
 also see the recording notice: by name with `PUBLIC_URL`, otherwise via a reminder every 10 minutes.
 

@@ -63,13 +63,25 @@ def _standup_meeting(body: FunctionCall, authorization: Optional[str], db: Sessi
 
 @router.post("/participants")
 def participants(body: FunctionCall, authorization: Optional[str] = Header(default=None), db: Session = Depends(get_db)):
-    """Who is in the call now, from live participant_events webhooks."""
+    """Who has come and gone since the agent joined, from participant_events
+    webhooks. MeetStream sends no join event for people who were already in
+    the call when the bot arrived, so the answer says so and the agent keeps
+    calling on the expected team by name."""
     meeting = _standup_meeting(body, authorization, db)
-    present = [p for p in meeting.participants if not p.is_bot and p.last_left_at is None]
-    if not present:
-        return {"result": "No join events received yet; go by who answers."}
-    names = [p.employee.name if p.employee else p.display_name for p in present]
-    return {"result": "In the meeting now: " + ", ".join(names) + "."}
+    people = [p for p in meeting.participants if not p.is_bot]
+    name = lambda p: p.employee.name if p.employee else p.display_name
+    joined = [name(p) for p in people if p.last_left_at is None]
+    left = [name(p) for p in people if p.last_left_at is not None]
+    parts = []
+    if joined:
+        parts.append("Joined since you arrived: " + ", ".join(joined) + ".")
+    if left:
+        parts.append("Left the call: " + ", ".join(left) + ".")
+    if not parts:
+        parts.append("Nobody has joined or left since you arrived.")
+    parts.append("People who were already in the call when you joined are not listed, so keep going through "
+                 "the expected people by name. This is for you only: never mention this list or tool aloud.")
+    return {"result": " ".join(parts)}
 
 
 @router.post("/leave")

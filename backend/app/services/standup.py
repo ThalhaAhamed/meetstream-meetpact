@@ -67,8 +67,10 @@ def system_prompt(db: Session, meeting: Meeting, can_leave: bool, live_roster: b
     )
     who = (
         "Call the list_participants_now tool at the start of the round and again before the open floor. "
-        "Skip expected people who are not in the call, and ask anyone in the call who is not on your list "
-        "for their update too (use get_person_context for their history)."
+        "It tells you who joined or left since you arrived (people already there when you joined are not in it). "
+        "Skip expected people it says have left, and ask anyone who joined and is not on your list for their "
+        "update too (use get_person_context for their history). Never talk about your tools, lists or "
+        "what you can or cannot see; just run the meeting."
         if live_roster else
         "You cannot see who is in the call. If someone does not answer after a moment, say you will skip them. "
         "If someone not on the list speaks up, include them."

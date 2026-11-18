@@ -463,8 +463,9 @@ def test_agent_sees_live_participants_from_webhooks(client, db, people, monkeypa
     client.post("/api/webhooks/participants", json=event("leave", "Lena Fischer", "t3"))
     for _ in range(40):
         r = client.post("/api/agent/participants", json=call, headers=hdr).json()["result"]
-        if "Sam Okafor" in r and "Lena" not in r:
+        if "Left the call: Lena Fischer" in r:
             break
         time.sleep(0.05)
-    assert r == "In the meeting now: Sam Okafor."
+    assert r.startswith("Joined since you arrived: Sam Okafor. Left the call: Lena Fischer.")
+    assert "never mention" in r
     assert client.post("/api/agent/participants", json=call).status_code == 401
