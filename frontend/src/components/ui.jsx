@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { X, Loader2, AlertTriangle } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 
 export function cx(...c) { return c.filter(Boolean).join(' ') }
 
@@ -198,10 +199,23 @@ export function Tabs({ tabs, value, onChange }) {
   )
 }
 
+// Swiss-grid section index shown above each page title ("03 / Work").
+export const SECTIONS = ['', 'me', 'board', 'ask', 'meetings', 'schedules', 'people', 'projects', 'reports', 'admin']
+const SECTION_NAMES = { '': 'Overview', me: 'Progress', board: 'Work', ask: 'Ask', meetings: 'Meetings', schedules: 'Schedules',
+  people: 'People', projects: 'Projects', reports: 'Reports', admin: 'Admin' }
+
+export function sectionIndex(pathname) {
+  const key = (pathname || '/').split('/')[1] || ''
+  const i = SECTIONS.indexOf(key)
+  return i < 0 ? null : { num: String(i + 1).padStart(2, '0'), name: SECTION_NAMES[key] }
+}
+
 export function PageHeader({ title, subtitle, actions }) {
+  const section = sectionIndex(useLocation().pathname)
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-      <div>
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b-2 border-ink-950 pb-4">
+      <div className="min-w-0">
+        {section && <p className="mb-1 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-ink-600">{section.num} / {section.name}</p>}
         <h1 className="text-2xl font-bold tracking-[-0.03em] text-ink-950 sm:text-3xl">{title}</h1>
         {subtitle && <p className="mt-1 text-sm font-medium text-ink-600">{subtitle}</p>}
       </div>

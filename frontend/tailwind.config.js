@@ -7,12 +7,12 @@ export default {
         sans: ['"Space Grotesk"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['"Space Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
-      // Soft & pastel neo-brutalism: hard offset shadows in a deep plum-ink
-      // instead of black, rounder corners, pastel fills.
+      // Soft Swiss-grid neo-brutalism ("Cobalt mist"): hard offset shadows in
+      // deep navy ink, rounded corners, pastel fills, strict grid.
       boxShadow: {
-        card: '4px 4px 0 0 #2B2540',
-        lift: '6px 6px 0 0 #2B2540',
-        press: '2px 2px 0 0 #2B2540',
+        card: '4px 4px 0 0 #151C2E',
+        lift: '6px 6px 0 0 #151C2E',
+        press: '2px 2px 0 0 #151C2E',
       },
       borderRadius: {
         DEFAULT: '0.5rem',
@@ -26,12 +26,12 @@ export default {
       },
       animation: { 'fade-up': 'fade-up 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both', shimmer: 'shimmer 1.6s linear infinite' },
       colors: {
-        ink: { 50: '#FBF8FF', 100: '#F1ECFA', 200: '#E2DBF0', 300: '#C8BFDB', 400: '#9D93B5', 500: '#756B8E', 600: '#5B5274', 700: '#463E5D', 800: '#363049', 900: '#2E2842', 950: '#2B2540' },
-        brand: { 50: '#F3F0FF', 100: '#E6E0FF', 200: '#CEC3FF', 300: '#B3A3FB', 400: '#9A86F5', 500: '#8470EC', 600: '#6F5AD6', 700: '#5B47B5', 800: '#4A3B91', 900: '#3D3274' },
-        // One brand colour (accent: lilac). Every other pastel has one meaning:
+        ink: { 50: '#F4F6FA', 100: '#E8EDF5', 200: '#D5DDEA', 300: '#B7C3D6', 400: '#8B98AF', 500: '#66738B', 600: '#4D5970', 700: '#3A4559', 800: '#283247', 900: '#1C2438', 950: '#151C2E' },
+        brand: { 50: '#EEF4FF', 100: '#E1EAFB', 200: '#C7DAFF', 300: '#9EC1FF', 400: '#77A6F7', 500: '#4F86E8', 600: '#3A6ACB', 700: '#2E54A3', 800: '#26447F', 900: '#1F3662' },
+        // One brand colour (accent: cobalt). Every other pastel has one meaning:
         // yellow = blocked / needs attention, red = overdue / failed, mint = done,
         // sky = in progress / info, orange (peach) = keeps slipping.
-        accent: { DEFAULT: '#C9B8FF', soft: '#EDE7FF' },
+        accent: { DEFAULT: '#9EC1FF', soft: '#E1EAFB' },
         pop: { yellow: '#FFE38F', pink: '#FFC6DA', mint: '#BFEBD3', sky: '#C4E1FF', orange: '#FFD0A8', lilac: '#DCCFFF', red: '#FFB5B0' },
         // Readable text versions of the signal colours.
         signal: { red: '#B3261E', amber: '#8A5A00' },

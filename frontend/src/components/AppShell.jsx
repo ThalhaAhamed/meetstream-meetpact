@@ -7,7 +7,7 @@ import {
 import { api } from '../api'
 import { useUser, useSetUser, isManager } from '../user'
 import CommandMenu from './CommandMenu'
-import { Avatar, cx } from './ui'
+import { Avatar, cx, sectionIndex } from './ui'
 
 function Logo() {
   return (
@@ -72,6 +72,7 @@ export default function AppShell({ children }) {
             className={({ isActive }) => cx('flex items-center gap-2.5 rounded-md border-2 px-3 py-1.5 text-sm font-bold transition-[background-color,box-shadow] duration-150 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
               isActive ? 'border-ink-950 bg-accent text-ink-950 shadow-press' : 'border-transparent text-ink-800 hover:border-ink-950 hover:bg-white')}>
             <Icon className="h-4 w-4" strokeWidth={2.25} />{label}
+            <span className="ml-auto font-mono text-[10px] font-bold text-ink-500">{sectionIndex(to)?.num}</span>
           </NavLink>
         ))}
       </nav>
@@ -113,7 +114,7 @@ export default function AppShell({ children }) {
       )}
 
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-[100dvh] w-60 shrink-0 flex-col border-r-2 border-ink-950 bg-pop-lilac/30 lg:flex">
+      <aside className="sticky top-0 hidden h-[100dvh] w-60 shrink-0 flex-col border-r-2 border-ink-950 bg-accent-soft lg:flex">
         <div className="px-5 py-5"><Logo /></div>
         {sidebar}
       </aside>
