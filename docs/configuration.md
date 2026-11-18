@@ -57,7 +57,7 @@ consent wording, sharing defaults, delivery, retention) live in **Admin → Bot 
 | `MIA_VOICE` | `Puck` | Realtime voice (Google: Puck, Charon, Kore, …) or pipeline voice id. |
 | `MIA_VOICE_PROVIDER` | `openai` | Pipeline only: `openai` or `elevenlabs`. |
 | `MIA_TRANSCRIBER_PROVIDER` / `MIA_TRANSCRIBER_MODEL` | `deepgram` / `nova-3` | Pipeline only. |
-| `STANDUP_SILENCE_LEAVE_SECONDS` | `60` | Without `PUBLIC_URL`, the stand-up bot leaves after this much silence once it has said goodbye. |
+| `STANDUP_SILENCE_LEAVE_SECONDS` | `180` | Safety net without `PUBLIC_URL`: the stand-up bot leaves after this much participant silence (it normally leaves 60 s after everyone else does). Keep it long; the agent's own speech doesn't count. |
 
 Providers other than Gemini Live need their API key added to your MeetStream account first.
 

@@ -17,9 +17,11 @@ the meeting out loud, from start to finish.
 4. **Close.** A short recap of who committed to what (with deadlines) and any blockers, then
    "If there's nothing else, that's everything for today. Thanks everyone - I'll leave the meeting now."
 5. **Leave.** With `PUBLIC_URL` set, the host calls an `end_meeting` tool and the app removes the bot a
-   few seconds after the goodbye. Without a public URL, stand-up bots are created with
-   `automatic_leave.voice_inactivity_timeout` (default 60 seconds, `STANDUP_SILENCE_LEAVE_SECONDS`), so
-   the bot leaves once the call goes quiet after the goodbye.
+   few seconds after the goodbye. Without a public URL, the bot leaves 60 seconds after everyone else
+   has left the call, with a 3-minute silence timeout as a safety net
+   (`STANDUP_SILENCE_LEAVE_SECONDS`). Keep that timeout generous: MeetStream measures silence from the
+   participants only, so the agent's own speech does not count, and a short value removes the bot
+   mid-meeting.
 
 The call is transcribed like any other meeting and goes through the same analysis, so the updates,
 work items and blockers land in everyone's records.

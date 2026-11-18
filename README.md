@@ -110,7 +110,7 @@ deterministically (de-duplication, carry-over, history). Details: [docs/architec
 
 **Does it need a public URL?** No. Without one it polls MeetStream. A public URL adds live webhooks
 (late joiners greeted by name) and lets the stand-up host end the meeting itself; without it the host
-leaves once the call goes quiet after its goodbye.
+leaves shortly after everyone else has left.
 
 **Which AI does it use?** Claude or Gemini for analysis and Ask (`ANALYSIS_PROVIDER`). The stand-up
 voice is a MeetStream MIA agent, Gemini Live by default.

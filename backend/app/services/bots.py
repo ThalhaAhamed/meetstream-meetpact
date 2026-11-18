@@ -66,7 +66,7 @@ def build_payload(db: Session, meeting: Meeting, join_at: Optional[datetime]) ->
     }
     if meeting.mode == "standup":
         # The agent closes the meeting itself; if it cannot call the leave tool,
-        # the bot leaves once the call has gone quiet after its goodbye.
+        # the bot leaves when everyone else has left, or after a long silence.
         payload["automatic_leave"]["voice_inactivity_timeout"] = settings.STANDUP_SILENCE_LEAVE_SECONDS
         payload["automatic_leave"]["everyone_left_timeout"] = min(settings.EVERYONE_LEFT_TIMEOUT, 60)
     if join_at:

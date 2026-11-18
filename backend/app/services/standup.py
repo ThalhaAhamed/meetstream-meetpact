@@ -63,7 +63,7 @@ def system_prompt(db: Session, meeting: Meeting, can_leave: bool) -> str:
     leave = (
         "Then call the end_meeting tool so you leave the call."
         if can_leave else
-        "Then stay completely silent: you will leave the call automatically once it goes quiet."
+        "Then stay completely silent: you will leave the call automatically once everyone has left."
     )
     return f"""You are {get_setting(db, 'bot_name')}, an AI stand-up facilitator running a live team meeting from start to finish. You speak out loud, so keep every turn short and natural (one or two sentences). You lead: people should never have to tell you what comes next.
 
