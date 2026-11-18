@@ -140,3 +140,27 @@ def test_tunnel_only_exposes_meetstream_paths():
         assert not t.via_tunnel(req("abc-def.trycloudflare.com"))
     finally:
         t.tunnel.state, t.tunnel.url = old_state, old_url
+
+
+def test_gendered_pronouns_are_rewritten(monkeypatch):
+    import asyncio
+
+    from app.services import extraction
+    from app.services.extraction import MeetingAnalysis
+
+    a = MeetingAnalysis.model_validate({
+        "overview": "Thalha gave an update. He is working on MeetPact.", "key_points": ["Plan is set"],
+        "decisions": [], "open_questions": [], "action_items": [], "employee_reports": [],
+    })
+    seen = {}
+
+    async def fake(system, prompt, max_tokens=4000):
+        seen["prompt"] = prompt
+        return '["Thalha gave an update. They are working on MeetPact."]'
+
+    monkeypatch.setattr(extraction, "complete_text", fake)
+    out = asyncio.run(extraction.neutralise_pronouns(a))
+    assert out.overview == "Thalha gave an update. They are working on MeetPact."
+    assert "Plan is set" not in seen["prompt"]  # only offending lines are sent
+    clean = MeetingAnalysis.model_validate({**a.model_dump(), "overview": "They shipped it."})
+    assert asyncio.run(extraction.neutralise_pronouns(clean)) is clean

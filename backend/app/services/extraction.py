@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from datetime import date
 from typing import List, Literal, Optional
 
@@ -142,8 +143,62 @@ def provider() -> str:
 
 async def analyse_meeting(prompt: str) -> MeetingAnalysis:
     if provider() == "gemini":
-        return await _analyse_with_gemini(prompt)
-    return await _analyse_with_claude(prompt)
+        analysis = await _analyse_with_gemini(prompt)
+    else:
+        analysis = await _analyse_with_claude(prompt)
+    return await neutralise_pronouns(analysis)
+
+
+# Models sometimes guess a gender from a name despite the prompt (seen live
+# with Gemini: "He is currently engaged..."). Any text that still uses a
+# gendered pronoun is rewritten in one small follow-up call.
+_GENDERED = re.compile(r"\b(he|she|him|his|her|hers|himself|herself)\b", re.IGNORECASE)
+PRONOUN_SYSTEM = (
+    "You fix pronouns in meeting notes. For each numbered line, replace every gendered pronoun "
+    "(he, she, him, his, her, hers, himself, herself) with the person's name or with they/them/their, "
+    "and fix verb agreement (\"he is\" -> \"they are\"). Change nothing else. Answer with a JSON array of "
+    "strings, one per input line, in the same order."
+)
+
+
+def _strings(node, path=()):
+    """Yield (path, text) for every string inside a dumped model."""
+    if isinstance(node, str):
+        yield path, node
+    elif isinstance(node, dict):
+        for k, v in node.items():
+            # ids, names, dates and project names are data, not prose
+            if k.endswith(("_id", "_ids", "name", "due_date")) or k == "project":
+                continue
+            yield from _strings(v, path + (k,))
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            yield from _strings(v, path + (i,))
+
+
+def _set(node, path, value):
+    for key in path[:-1]:
+        node = node[key]
+    node[path[-1]] = value
+
+
+async def neutralise_pronouns(analysis: MeetingAnalysis) -> MeetingAnalysis:
+    data = analysis.model_dump(mode="json")
+    hits = [(path, text) for path, text in _strings(data) if _GENDERED.search(text)]
+    if not hits:
+        return analysis
+    lines = "\n".join(f"{i + 1}. {json.dumps(text)}" for i, (_, text) in enumerate(hits))
+    try:
+        raw = await complete_text(PRONOUN_SYSTEM, lines, max_tokens=2000)
+        fixed = json.loads(raw[raw.index("["): raw.rindex("]") + 1])
+        if len(fixed) != len(hits) or not all(isinstance(x, str) for x in fixed):
+            raise ValueError("wrong shape")
+        for (path, _), text in zip(hits, fixed):
+            _set(data, path, text)
+        return MeetingAnalysis.model_validate(data)
+    except (AnalysisError, ValueError) as exc:
+        log.warning("Could not rewrite gendered pronouns: %s", exc)
+        return analysis
 
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
