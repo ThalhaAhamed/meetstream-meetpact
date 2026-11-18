@@ -1,0 +1,116 @@
+"""Application settings, read from environment variables (or a .env file).
+
+Every setting has a working default so the app boots with no configuration;
+only MEETSTREAM_API_KEY (to send bots) and ANTHROPIC_API_KEY (to analyse
+transcripts) are needed for the real meeting flow.
+"""
+from __future__ import annotations
+
+import secrets
+from pathlib import Path
+from typing import Optional
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+REPO_DIR = BACKEND_DIR.parent
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=(str(REPO_DIR / ".env"), str(BACKEND_DIR / ".env")),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    # ---- Server ---------------------------------------------------------
+    DATABASE_URL: str = f"sqlite:///{(BACKEND_DIR / 'data' / 'tracker.db').as_posix()}"
+    SECRET_KEY: str = ""  # signs session cookies; generated and stored in data/ when empty
+    FRONTEND_ORIGIN: str = "http://localhost:5173"
+    # Public HTTPS base URL that forwards to this server (ngrok / cloudflared).
+    # Optional. With it MeetStream can push webhooks (lifecycle, participant
+    # joins) and the stand-up agent can call back into the MCP endpoint.
+    # Without it everything still works through polling.
+    PUBLIC_URL: Optional[str] = None
+    TIMEZONE: str = "UTC"  # default timezone for schedules
+    BACKGROUND_WORKERS: bool = True  # scheduler + bot watcher loops
+
+    # ---- MeetStream -----------------------------------------------------
+    MEETSTREAM_API_KEY: Optional[str] = None
+    MEETSTREAM_BASE_URL: str = "https://api.meetstream.ai/api/v1"
+    MEETSTREAM_WEBHOOK_SECRET: Optional[str] = None  # workspace webhook signing secret, optional
+    BOT_NAME: str = "Progress Tracker AI Notetaker"
+    # Post-call transcription provider. "meetstream" needs no extra key on the
+    # MeetStream account; "deepgram" / "assemblyai" need that provider set up there.
+    TRANSCRIPT_PROVIDER: str = "meetstream"
+    TRANSCRIPT_LANGUAGE: str = "en"  # "auto" lets the meetstream provider detect it
+    RETENTION_HOURS: int = 168
+    WAITING_ROOM_TIMEOUT: int = 600
+    EVERYONE_LEFT_TIMEOUT: int = 120
+    IN_CALL_RECORDING_TIMEOUT: int = 14400  # API minimum is 600
+    SCHEDULE_LEAD_MINUTES: int = 10  # create join_at bots this long before start
+
+    # ---- Stand-up agent (MeetStream MIA) ---------------------------------
+    MIA_MODE: str = "pipeline"
+    MIA_MODEL_PROVIDER: str = "openai"
+    MIA_MODEL: str = "gpt-4.1"
+    MIA_VOICE_PROVIDER: str = "openai"
+    MIA_VOICE: str = "nova"
+    MIA_TRANSCRIBER_PROVIDER: str = "deepgram"
+    MIA_TRANSCRIBER_MODEL: str = "nova-3"
+
+    # ---- AI analysis (Claude or Gemini) ----------------------------------
+    # "anthropic" | "gemini"; empty = whichever key is set (Claude if both).
+    ANALYSIS_PROVIDER: str = ""
+    GEMINI_API_KEY: Optional[str] = None
+    GEMINI_MODEL: str = "gemini-2.5-pro"  # most accurate in testing; gemini-3.8-flash is faster
+    ANTHROPIC_API_KEY: Optional[str] = None
+    ANALYSIS_MODEL: str = "claude-opus-5-5"
+    ANALYSIS_EFFORT: str = "high"
+
+    # ---- Task-tool integrations (all optional) ---------------------------
+    CLICKUP_API_TOKEN: Optional[str] = None
+    CLICKUP_LIST_ID: Optional[str] = None
+    JIRA_BASE_URL: Optional[str] = None  # https://your-site.atlassian.net
+    JIRA_EMAIL: Optional[str] = None
+    JIRA_API_TOKEN: Optional[str] = None
+    JIRA_PROJECT_KEY: Optional[str] = None
+    JIRA_ISSUE_TYPE: str = "Task"
+    ASANA_ACCESS_TOKEN: Optional[str] = None
+    ASANA_PROJECT_GID: Optional[str] = None
+    TRELLO_API_KEY: Optional[str] = None
+    TRELLO_TOKEN: Optional[str] = None
+    TRELLO_LIST_ID: Optional[str] = None
+    TRELLO_DONE_LIST_ID: Optional[str] = None
+    MONDAY_API_TOKEN: Optional[str] = None
+    MONDAY_BOARD_ID: Optional[str] = None
+    MONDAY_STATUS_COLUMN_ID: str = "status"
+    INTEGRATION_SYNC_MINUTES: int = 15
+
+    # ---- Report delivery (optional) ---------------------------------------
+    APP_URL: str = "http://localhost:5173"  # links in emails / Slack point here
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_FROM: Optional[str] = None
+    SMTP_STARTTLS: bool = True
+    SLACK_WEBHOOK_URL: Optional[str] = None  # Slack incoming webhook for meeting summaries
+
+    @property
+    def public_url(self) -> Optional[str]:
+        return self.PUBLIC_URL.rstrip("/") if self.PUBLIC_URL else None
+
+
+settings = Settings()
+
+
+def secret_key() -> str:
+    """The cookie-signing key: from env, else a random one persisted in data/."""
+    if settings.SECRET_KEY:
+        return settings.SECRET_KEY
+    path = BACKEND_DIR / "data" / ".secret_key"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        path.write_text(secrets.token_urlsafe(48), encoding="utf-8")
+    return path.read_text(encoding="utf-8").strip()

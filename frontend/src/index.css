@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html { scroll-behavior: smooth; }
+h1, h2, h3 { text-wrap: balance; }
+p, li { text-wrap: pretty; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* Skeleton placeholder while data loads. */
+.skeleton {
+  @apply rounded-md;
+  background: linear-gradient(90deg, theme('colors.ink.100') 25%, theme('colors.ink.50') 50%, theme('colors.ink.100') 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+.prose-report h1 { @apply mb-2 text-lg font-semibold tracking-tight text-ink-950; }
+.prose-report h2 { @apply mb-2 mt-6 inline-block rounded border-2 border-ink-950 bg-pop-yellow px-2 py-0.5 text-sm font-bold text-ink-950; }
+.prose-report h3 { @apply mb-1 mt-4 text-sm font-semibold text-ink-900; }
+.prose-report p { @apply my-2 max-w-[68ch] text-sm leading-relaxed text-ink-700; }
+.prose-report ul { @apply my-1 list-disc space-y-0.5 pl-5 text-sm text-ink-700; }
+.prose-report strong { @apply font-semibold text-ink-900; }
+.prose-report em { @apply text-ink-500; }

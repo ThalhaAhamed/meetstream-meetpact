@@ -1,0 +1,105 @@
+"""Deliver the meeting report after it is generated: email and Slack.
+
+Both are optional and respect report sharing:
+* Email goes to each user allowed to see the full report, and each gets the
+  version of the report they are allowed to see (individual updates filtered
+  by the employee-update sharing setting).
+* Slack gets a short summary and a link, and only when the full report is
+  shared with participants or managers - a channel is too wide an audience
+  for an organizer-only or selected-people report.
+A report is delivered once; re-analysing a meeting does not send it again.
+"""
+from __future__ import annotations
+
+import asyncio
+import logging
+import smtplib
+from datetime import datetime, timezone
+from email.message import EmailMessage
+from typing import Dict, List
+
+import httpx
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app import access
+from app.config import settings
+from app.models import Meeting, User
+from app.services.app_settings import get_setting
+from app.services.reports import render_meeting_report
+
+log = logging.getLogger(__name__)
+
+
+def email_configured() -> bool:
+    return bool(settings.SMTP_HOST and settings.SMTP_FROM)
+
+
+def slack_configured() -> bool:
+    return bool(settings.SLACK_WEBHOOK_URL)
+
+
+def meeting_url(meeting: Meeting) -> str:
+    return f"{settings.APP_URL.rstrip('/')}/meetings/{meeting.id}"
+
+
+def recipients(db: Session, meeting: Meeting) -> List[User]:
+    return [u for u in db.scalars(select(User)) if u.email and access.can_view_full(db, u, meeting)]
+
+
+def _send_email(to: str, subject: str, body: str) -> None:
+    msg = EmailMessage()
+    msg["From"] = settings.SMTP_FROM
+    msg["To"] = to
+    msg["Subject"] = subject
+    msg.set_content(body)
+    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as smtp:
+        if settings.SMTP_STARTTLS:
+            smtp.starttls()
+        if settings.SMTP_USER:
+            smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD or "")
+        smtp.send_message(msg)
+
+
+def slack_text(meeting: Meeting) -> str:
+    s = meeting.summary or {}
+    lines = [f"*{meeting.title}* - meeting notes are ready", s.get("overview") or ""]
+    if s.get("decisions"):
+        lines.append("*Decisions*\n" + "\n".join(f"• {d}" for d in s["decisions"][:5]))
+    if s.get("action_items"):
+        lines.append("*Action items*\n" + "\n".join(
+            f"• {a.get('title')}" + (f" - {a['owner_name']}" if a.get("owner_name") else "")
+            + (f" (due {a['due_date']})" if a.get("due_date") else "") for a in s["action_items"][:8]))
+    lines.append(f"<{meeting_url(meeting)}|Open the full report>")
+    return "\n\n".join(l for l in lines if l)
+
+
+async def deliver(db: Session, meeting: Meeting) -> Dict[str, int]:
+    """Send the report once. Returns counts for the log."""
+    sent = {"emails": 0, "slack": 0}
+    if meeting.report_delivered_at or meeting.processing_status != "done":
+        return sent
+    if get_setting(db, "deliver_email") and email_configured():
+        for user in recipients(db, meeting):
+            body = render_meeting_report(db, meeting, lambda eid, u=user: access.can_view_employee_section(db, u, meeting, eid))
+            body += f"\n\nOpen in the app: {meeting_url(meeting)}\n"
+            try:
+                await asyncio.to_thread(_send_email, user.email, f"Meeting notes: {meeting.title}", body)
+                sent["emails"] += 1
+            except (OSError, smtplib.SMTPException) as exc:
+                log.warning("Report email to a recipient failed: %s", exc.__class__.__name__)
+    audience = (meeting.share_full or {}).get("audience")
+    if get_setting(db, "deliver_slack") and slack_configured() and audience in ("participants", "managers"):
+        try:
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                r = await client.post(settings.SLACK_WEBHOOK_URL, json={"text": slack_text(meeting)})
+            if r.status_code < 400:
+                sent["slack"] = 1
+            else:
+                log.warning("Slack webhook returned %s", r.status_code)
+        except httpx.HTTPError as exc:
+            log.warning("Slack delivery failed: %s", exc.__class__.__name__)
+    if sent["emails"] or sent["slack"]:
+        meeting.report_delivered_at = datetime.now(timezone.utc)
+        db.commit()
+    return sent
