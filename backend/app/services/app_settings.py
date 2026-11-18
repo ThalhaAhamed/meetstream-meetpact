@@ -15,6 +15,11 @@ DEFAULTS: Dict[str, Any] = {
         "Hi everyone, I'm {bot_name}, an AI notetaker added by {organizer}. "
         "This meeting is being recorded and transcribed for meeting notes."
     ),
+    # What the AI stand-up host says first, as soon as it joins. {bot_name} is filled in.
+    "standup_intro": (
+        "Hi everyone, I'm MeetPact, your AI notetaker. I'll go round one by one: tell me what you "
+        "worked on, any updates, and your status."
+    ),
     # Default report sharing for meetings created without a schedule.
     "default_share_full": {"audience": "participants", "user_ids": []},
     "default_share_employee": {"audience": "managers", "user_ids": []},

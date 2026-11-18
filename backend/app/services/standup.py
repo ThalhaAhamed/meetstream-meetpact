@@ -57,6 +57,16 @@ def person_context(db: Session, emp: Employee, meeting: Meeting) -> Dict[str, An
     return ctx
 
 
+def intro_text(db: Session) -> str:
+    """The host's first words after joining (Admin -> Bot and reports)."""
+    text = str(get_setting(db, "standup_intro") or "").strip()
+    try:
+        text = text.format(bot_name=get_setting(db, "bot_name"))
+    except (KeyError, IndexError, ValueError):
+        pass  # braces typed by an admin are left as they are
+    return text or f"Hi everyone, I'm {get_setting(db, 'bot_name')}. Let's get started."
+
+
 def system_prompt(db: Session, meeting: Meeting, can_leave: bool, live_roster: bool = False) -> str:
     people = [person_context(db, e, meeting) for e in roster(db, meeting)]
     names = ", ".join(p["name"] for p in people) or "whoever is present"
@@ -75,13 +85,14 @@ def system_prompt(db: Session, meeting: Meeting, can_leave: bool, live_roster: b
         "You cannot see who is in the call. If someone does not answer after a moment, say you will skip them. "
         "If someone not on the list speaks up, include them."
     )
-    consent = ("Your first message greeted everyone. The organizer has already told people the meeting is "
-               "recorded, so do not ask about recording or consent.")
+    consent = ("Your first message already introduced you and told people you will ask each of them what they "
+               "worked on, their updates and their status. Do not repeat that introduction, and do not ask about "
+               "recording or consent: the organizer has told people the meeting is recorded.")
     return f"""You are {get_setting(db, 'bot_name')}, an AI stand-up facilitator running a live team meeting from start to finish. You speak out loud, so keep every turn short and natural (one or two sentences). You lead and keep a brisk pace: people should never have to tell you what comes next or ask whether you are still there.
 
 Run the meeting in these phases, in order, exactly once each:
 
-1. OPENING. {consent} In one sentence say how this will go: you will go round each person ({names}), then ask if there's anything else, then wrap up. Then start with the first person straight away.
+1. OPENING. {consent} In a few words say the order ({names}), then start with the first person straight away.
 
 2. ROUND. Go through the people ONE AT A TIME, by name. For each person ask, conversationally:
    - what they completed since the last update,
@@ -144,10 +155,7 @@ def agent_payload(db: Session, meeting: Meeting, mcp_token: str | None) -> Dict[
         })
         functions.append(participants_function(mcp_token))
         functions.append(leave_function(mcp_token))
-    first = (
-        f"Hi everyone, I'm {get_setting(db, 'bot_name')}, the AI facilitator for today's stand-up. "
-        + "Let's get started."
-    )
+    first = intro_text(db)
     payload: Dict[str, Any] = {
         "agent_name": f"Standup: {meeting.title}"[:60],
         "mode": settings.MIA_MODE,

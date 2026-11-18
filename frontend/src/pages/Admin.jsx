@@ -88,6 +88,7 @@ function SettingsTab() {
           <CardHeader title="Bot and reports" subtitle={admin ? 'How the bot introduces itself and where reports go' : 'Only admins can change these'} />
           <div className="space-y-3 p-5">
             <Field label="Bot name"><Input disabled={!admin} value={values.bot_name} onChange={(e) => setValues({ ...values, bot_name: e.target.value })} /></Field>
+            <Field label="AI stand-up intro" hint="What the stand-up host says as soon as it joins. {bot_name} is filled in."><Textarea disabled={!admin} value={values.standup_intro} onChange={(e) => setValues({ ...values, standup_intro: e.target.value })} /></Field>
             <Field label="Recording notice" hint="Posted once in the chat when the bot is admitted. {bot_name} and {organizer} are filled in. Leave empty to post nothing."><Textarea disabled={!admin} value={values.consent_notice} onChange={(e) => setValues({ ...values, consent_notice: e.target.value })} /></Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Default full-report audience"><Select disabled={!admin} value={values.default_share_full.audience} onChange={(e) => setValues({ ...values, default_share_full: { audience: e.target.value, user_ids: [] } })}>

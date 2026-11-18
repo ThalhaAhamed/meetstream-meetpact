@@ -164,3 +164,14 @@ def test_gendered_pronouns_are_rewritten(monkeypatch):
     assert "Plan is set" not in seen["prompt"]  # only offending lines are sent
     clean = MeetingAnalysis.model_validate({**a.model_dump(), "overview": "They shipped it."})
     assert asyncio.run(extraction.neutralise_pronouns(clean)) is clean
+
+
+def test_standup_intro_is_editable(db):
+    from app.services.app_settings import set_settings
+    from app.services.standup import intro_text
+
+    assert intro_text(db).startswith("Hi everyone, I'm MeetPact, your AI notetaker.")
+    set_settings(db, {"standup_intro": "Morning! {bot_name} here. Updates please.", "bot_name": "Notes Bot"})
+    assert intro_text(db) == "Morning! Notes Bot here. Updates please."
+    set_settings(db, {"standup_intro": "Odd {brace"})
+    assert intro_text(db) == "Odd {brace"
