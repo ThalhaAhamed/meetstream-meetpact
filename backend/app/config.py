@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     # Without it everything still works through polling.
     PUBLIC_URL: Optional[str] = None
     TIMEZONE: str = "UTC"  # default timezone for schedules
+    # Without PUBLIC_URL, start a Cloudflare quick tunnel automatically if
+    # cloudflared is installed ("auto"), or never ("off").
+    TUNNEL: str = "auto"
+    CLOUDFLARED_PATH: Optional[str] = None
+    PORT: int = 8000  # the port the backend listens on (the tunnel points here)
     BACKGROUND_WORKERS: bool = True  # scheduler + bot watcher loops
 
     # ---- MeetStream -----------------------------------------------------
@@ -109,7 +114,12 @@ class Settings(BaseSettings):
 
     @property
     def public_url(self) -> Optional[str]:
-        return self.PUBLIC_URL.rstrip("/") if self.PUBLIC_URL else None
+        """PUBLIC_URL if set, else the automatic tunnel's address while it is up."""
+        if self.PUBLIC_URL:
+            return self.PUBLIC_URL.rstrip("/")
+        from app.services.tunnel import tunnel
+
+        return tunnel.url if tunnel.state == "up" else None
 
 
 settings = Settings()

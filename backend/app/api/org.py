@@ -266,6 +266,7 @@ def get_settings(db: Session = Depends(get_db), _: User = Depends(current_user))
             "analysis_configured": bool(settings.GEMINI_API_KEY if provider() == "gemini" else settings.ANTHROPIC_API_KEY),
             "analysis_model": settings.GEMINI_MODEL if provider() == "gemini" else settings.ANALYSIS_MODEL,
             "public_url": settings.public_url,
+            "tunnel": __import__("app.services.tunnel", fromlist=["tunnel"]).tunnel.describe(),
             "email_configured": bool(settings.SMTP_HOST and settings.SMTP_FROM),
             "slack_configured": bool(settings.SLACK_WEBHOOK_URL),
             "transcript_provider": settings.TRANSCRIPT_PROVIDER,

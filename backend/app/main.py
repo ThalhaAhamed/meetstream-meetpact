@@ -6,7 +6,8 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -14,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api import agent, auth_routes, calendar, knowledge, mcp, meetings, org, progress, webhooks
 from app.config import REPO_DIR, settings
 from app.db import init_db
+from app.services.tunnel import allowed_through_tunnel, tunnel, via_tunnel
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("app")
@@ -42,11 +44,14 @@ async def lifespan(app: FastAPI):
         from app.services.workers import start_workers
 
         tasks = start_workers() + [asyncio.create_task(_integration_loop())]
+        if tunnel.wanted():
+            tasks.append(asyncio.create_task(tunnel.run()))
     if not settings.MEETSTREAM_API_KEY:
         log.warning("MEETSTREAM_API_KEY is not set: bots cannot be sent (transcript import still works).")
     if not settings.ANTHROPIC_API_KEY and not settings.GEMINI_API_KEY:
         log.warning("No ANTHROPIC_API_KEY or GEMINI_API_KEY set: transcripts cannot be analysed.")
     yield
+    tunnel.stop()
     for t in tasks:
         t.cancel()
 
@@ -59,6 +64,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def tunnel_guard(request: Request, call_next):
+    """Through the automatic tunnel only MeetStream's paths are reachable;
+    sign-in, the UI and the rest of the API stay on this machine."""
+    if via_tunnel(request) and not allowed_through_tunnel(request.url.path):
+        return JSONResponse({"detail": "Not available through the public tunnel."}, status_code=404)
+    return await call_next(request)
+
 
 for r in (auth_routes.router, org.router, meetings.router, progress.router, calendar.router, knowledge.router,
           agent.router, webhooks.router, mcp.router):
@@ -77,6 +91,8 @@ if DIST.exists():
 
     @app.get("/{path:path}", include_in_schema=False)
     def spa(path: str):
+        if path.startswith(("api/", "mcp")):
+            return JSONResponse({"detail": "Not found"}, status_code=404)
         target = DIST / path
         if path and target.is_file() and DIST in target.resolve().parents:
             return FileResponse(target)

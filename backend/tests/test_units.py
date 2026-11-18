@@ -120,3 +120,30 @@ def test_filler_only_segments_dropped_in_short_calls():
                {"speaker": "T", "transcript": "Thank you.", "start_time": 70},
                {"speaker": "T", "transcript": "Thank you.", "start_time": 100}]
     assert [t["text"] for t in normalize_transcript(payload)] == ["I'm done with the export, testing response time today."]
+
+
+def test_tunnel_only_exposes_meetstream_paths():
+    from types import SimpleNamespace
+
+    from app.services import tunnel as t
+
+    assert t.allowed_through_tunnel("/api/webhooks/meetstream")
+    assert t.allowed_through_tunnel("/api/agent/leave") and t.allowed_through_tunnel("/mcp")
+    assert not t.allowed_through_tunnel("/api/auth/login")
+    assert not t.allowed_through_tunnel("/api/meetings") and not t.allowed_through_tunnel("/mcpx")
+
+    def req(host, client="127.0.0.1", headers=None):
+        return SimpleNamespace(client=SimpleNamespace(host=client), headers={"host": host, **(headers or {})})
+
+    old_state, old_url = t.tunnel.state, t.tunnel.url
+    try:
+        t.tunnel.state, t.tunnel.url = "up", "https://abc-def.trycloudflare.com"
+        assert t.via_tunnel(req("abc-def.trycloudflare.com"))
+        assert t.via_tunnel(req("localhost:8000", headers={"cf-ray": "x"}))
+        assert not t.via_tunnel(req("localhost:8000"))  # the local browser
+        # uvicorn rewrites the peer to the real visitor's IP; still recognised.
+        assert t.via_tunnel(req("abc-def.trycloudflare.com", client="203.0.113.9"))
+        t.tunnel.state = "off"
+        assert not t.via_tunnel(req("abc-def.trycloudflare.com"))
+    finally:
+        t.tunnel.state, t.tunnel.url = old_state, old_url

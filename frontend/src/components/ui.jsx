@@ -170,10 +170,15 @@ export const Input = (p) => <input {...p} className={cx(INPUT, width(p.className
 export const Textarea = (p) => <textarea {...p} className={cx(INPUT, 'min-h-[90px]', width(p.className), p.className)} />
 export const Select = ({ children, ...p }) => <select {...p} className={cx(INPUT, 'pr-8', width(p.className), p.className)}>{children}</select>
 
+const STAT_FILL = {
+  red: 'bg-pop-red', amber: 'bg-pop-yellow', lilac: 'bg-pop-lilac', sky: 'bg-pop-sky',
+  mint: 'bg-pop-mint', pink: 'bg-pop-pink', peach: 'bg-pop-orange',
+}
+
 export function Stat({ label, value, tone, hint }) {
   return (
     // Flat colour fill only when the number needs attention.
-    <Card className={cx('px-4 py-3', tone === 'red' ? 'bg-pop-red' : tone === 'amber' ? 'bg-pop-yellow' : 'bg-white')}>
+    <Card className={cx('px-4 py-3', STAT_FILL[tone] || 'bg-white')}>
       <p className="text-xs font-bold text-ink-950">{label}</p>
       <p className="mt-1 font-mono text-3xl font-bold tabular-nums text-ink-950">{value}</p>
       {hint && <p className="mt-0.5 text-[11px] font-medium text-ink-700">{hint}</p>}

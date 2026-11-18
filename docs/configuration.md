@@ -18,11 +18,28 @@ consent wording, sharing defaults, delivery, retention) live in **Admin → Bot 
 |---|---|---|
 | `DATABASE_URL` | `sqlite:///backend/data/tracker.db` | Any SQLAlchemy URL. Postgres needs a driver such as `psycopg`. |
 | `SECRET_KEY` | generated | Signs session cookies. Generated and stored in `backend/data/` when empty. |
-| `PUBLIC_URL` | - | Public HTTPS address of the backend. Enables webhooks and the stand-up host's tools. |
+| `PUBLIC_URL` | - | Public HTTPS address of the backend. Enables webhooks and the stand-up host's tools. Leave empty to use the automatic tunnel. |
+| `TUNNEL` | `auto` | Without `PUBLIC_URL`, start a Cloudflare quick tunnel automatically when `cloudflared` is installed. `off` disables it. Only MeetStream's paths are reachable through it. |
+| `CLOUDFLARED_PATH` | - | Path to `cloudflared` if it isn't on `PATH`. |
+| `PORT` | `8000` | Port the backend listens on (the tunnel points here). |
 | `APP_URL` | `http://localhost:5173` | Base for links in emails and Slack (`http://localhost:8000` with Docker). |
 | `FRONTEND_ORIGIN` | `http://localhost:5173` | CORS origin for the dev UI. |
 | `TIMEZONE` | `UTC` | Default timezone for new schedules (IANA name). |
 | `BACKGROUND_WORKERS` | `true` | Scheduler, bot watcher, calendar sync and housekeeping loops. |
+
+## Public URL
+
+MeetStream needs to reach MeetPact during a call for live webhooks and for the stand-up host to see
+who is in the call and leave when it is done. You have three options:
+
+1. **Automatic (default):** install [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+   (`winget install Cloudflare.cloudflared`, `brew install cloudflared`, …). MeetPact starts a quick
+   tunnel on startup and uses its address. Only `/api/webhooks/*`, `/api/agent/*`, `/mcp` and
+   `/api/health` are reachable through it; sign-in, the UI and the rest of the API stay local.
+2. **Your own:** set `PUBLIC_URL` to an HTTPS address that forwards to the backend.
+3. **None** (`TUNNEL=off`, no `PUBLIC_URL`): everything works by polling; the stand-up host leaves
+   60 s after everyone else has left instead of right after its goodbye, and does not see who is in
+   the call.
 
 ## Bots
 

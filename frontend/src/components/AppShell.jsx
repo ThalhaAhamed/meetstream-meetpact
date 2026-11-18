@@ -113,7 +113,7 @@ export default function AppShell({ children }) {
       )}
 
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-[100dvh] w-60 shrink-0 flex-col border-r-2 border-ink-950 bg-ink-50 lg:flex">
+      <aside className="sticky top-0 hidden h-[100dvh] w-60 shrink-0 flex-col border-r-2 border-ink-950 bg-pop-lilac/30 lg:flex">
         <div className="px-5 py-5"><Logo /></div>
         {sidebar}
       </aside>

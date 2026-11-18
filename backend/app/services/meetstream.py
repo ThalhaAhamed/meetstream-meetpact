@@ -147,7 +147,7 @@ class MeetStreamClient:
 
     async def remove_bot(self, bot_id: str) -> Dict[str, Any]:
         # MeetStream answers once the bot has actually left, which can take a while.
-        return await self._request("GET", f"/bots/{bot_id}/remove_bot", timeout=60.0)
+        return await self._request("GET", f"/bots/{bot_id}/remove_bot", timeout=150.0)
 
     async def cancel_scheduled_bot(self, bot_id: str) -> Dict[str, Any]:
         return await self._request("DELETE", f"/calendar/scheduled_bots/{bot_id}", timeout=15.0)

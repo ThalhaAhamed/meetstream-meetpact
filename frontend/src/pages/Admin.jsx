@@ -129,7 +129,11 @@ function SettingsTab() {
             <Check ok={env.meetstream_configured} label="MeetStream API key" hint="Needed to send bots into meetings." />
             <Check ok={env.email_configured || env.slack_configured} label="Report delivery (optional)" hint="SMTP_* for email, SLACK_WEBHOOK_URL for Slack." />
             <Check ok={env.analysis_configured} label={env.analysis_provider === 'gemini' ? 'Gemini API key' : 'Anthropic API key'} hint={`Analyses transcripts with ${env.analysis_model}.`} />
-            <Check ok={!!env.public_url} label="Public URL (optional)" hint={env.public_url || 'Enables webhooks and live lookups for the stand-up agent. Polling works without it.'} />
+            <Check ok={!!env.public_url} label="Public address (optional)"
+              hint={env.public_url
+                ? `${env.public_url}${env.tunnel?.state === 'up' ? ' (automatic tunnel)' : ''}`
+                : env.tunnel?.state === 'starting' ? 'Starting the tunnel…'
+                : env.tunnel?.error || 'Install cloudflared or set PUBLIC_URL: live webhooks, and the stand-up host leaves right after its goodbye.'} />
             <p className="mt-2 text-xs text-ink-500">Transcription: {env.transcript_provider} · Stand-up voice model: {env.mia_model} · Timezone: {env.timezone}</p>
           </div>
         </Card>

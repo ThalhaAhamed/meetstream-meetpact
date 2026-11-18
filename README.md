@@ -50,9 +50,9 @@ cd frontend && npm install && npm run dev                      # terminal 2 → 
 |---|---|---|
 | `MEETSTREAM_API_KEY` | Sending bots and the AI stand-up host | [app.meetstream.ai](https://app.meetstream.ai/api-key) |
 | `ANTHROPIC_API_KEY` **or** `GEMINI_API_KEY` | Analysing transcripts, Ask | [console.anthropic.com](https://console.anthropic.com) · [aistudio.google.com](https://aistudio.google.com/apikey) |
-| `PUBLIC_URL` *(optional)* | Live webhooks; lets the stand-up host end the meeting itself | `ngrok http 8000` or `cloudflared tunnel --url http://localhost:8000` |
+| `cloudflared` *(optional, recommended)* | A public address for live webhooks, so the stand-up host sees who's in the call and leaves right after its goodbye | Install [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/); MeetPact starts the tunnel itself |
 
-No public URL is needed: without one MeetPact polls MeetStream, so it works from a laptop.
+No public address is required: without one MeetPact polls MeetStream, so it works from a laptop.
 Everything is in [docs/configuration.md](docs/configuration.md).
 
 ## ✨ Features
@@ -108,15 +108,17 @@ deterministically (de-duplication, carry-over, history). Details: [docs/architec
 
 ## ❓ FAQ
 
-**Does it need a public URL?** No. Without one it polls MeetStream. A public URL adds live webhooks
-(late joiners greeted by name) and lets the stand-up host end the meeting itself; without it the host
-leaves shortly after everyone else has left.
+**Does it need a public URL?** No. Without one it polls MeetStream. If `cloudflared` is installed,
+MeetPact opens a tunnel by itself (only MeetStream's paths go through it), which adds live webhooks:
+late joiners are greeted by name, the stand-up host sees who is in the call and leaves right after its
+goodbye. Without it the host leaves shortly after everyone else has left.
 
 **Which AI does it use?** Claude or Gemini for analysis and Ask (`ANALYSIS_PROVIDER`). The stand-up
 voice is a MeetStream MIA agent, Gemini Live by default.
 
-**Can the bot see who's in the call?** Not while it's running - MeetStream exposes the participant list
-after the meeting. The stand-up host works from the meeting's team and skips people who don't answer.
+**Can the bot see who's in the call?** Only with a public address (the automatic tunnel counts):
+MeetStream then sends live join/leave events. Without one, the participant list is only available after
+the meeting, so the stand-up host works from the meeting's team and skips people who don't answer.
 
 **Is the AI always right?** No. Everyone can confirm or correct what was recorded about them, and every
 change is kept in history.

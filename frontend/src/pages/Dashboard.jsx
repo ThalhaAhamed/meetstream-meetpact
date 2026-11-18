@@ -100,12 +100,12 @@ export default function Dashboard() {
         <div className="space-y-5">
           <NeedsAttention items={data.attention || []} unreviewed={data.totals.unreviewed} />
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-            <Stat label="People" value={data.totals.employees} />
-            <Stat label="Open work items" value={data.totals.open} />
-            <Stat label="Done this week" value={data.totals.completed_week} />
-            <Stat label="Overdue" value={data.totals.overdue} tone={data.totals.overdue ? 'red' : undefined} />
-            <Stat label="Open blockers" value={data.totals.blockers} tone={data.totals.blockers ? 'amber' : undefined} />
-            <Stat label="Meetings this week" value={data.totals.meetings_week} hint={`${data.totals.unreviewed} updates awaiting review`} />
+            <Stat label="People" value={data.totals.employees} tone="lilac" />
+            <Stat label="Open work items" value={data.totals.open} tone="sky" />
+            <Stat label="Done this week" value={data.totals.completed_week} tone="mint" />
+            <Stat label="Overdue" value={data.totals.overdue} tone={data.totals.overdue ? 'red' : 'peach'} />
+            <Stat label="Open blockers" value={data.totals.blockers} tone="amber" />
+            <Stat label="Meetings this week" value={data.totals.meetings_week} tone="pink" hint={`${data.totals.unreviewed} updates awaiting review`} />
           </div>
 
           <div className="grid gap-5 lg:grid-cols-3">
