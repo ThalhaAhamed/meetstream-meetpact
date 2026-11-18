@@ -1,16 +1,16 @@
 # MeetPact - backend dependencies
-fastapi>=0.115
-uvicorn[standard]>=0.32
-sqlalchemy>=2.0.36
-pydantic>=2.10
-pydantic-settings>=2.6
-python-dotenv>=1.0
-httpx>=0.28
-anthropic>=0.75
-bcrypt>=4.2
+fastapi>=0.163.0
+uvicorn[standard]>=0.54.0
+sqlalchemy>=2.1.8
+pydantic>=2.14.3
+pydantic-settings>=2.16.3
+python-dotenv>=1.2.4
+httpx>=0.28.1
+anthropic>=2.8.0
+bcrypt>=5.0.0
 itsdangerous>=2.2
-tzdata>=2024.2
+tzdata>=2026.6
 
 # tests
-pytest>=8.3
-alembic>=1.14
+pytest>=9.2.0
+alembic>=1.20.1
