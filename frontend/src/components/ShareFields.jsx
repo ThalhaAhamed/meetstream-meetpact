@@ -27,7 +27,7 @@ function Audience({ label, hint, value, onChange, users }) {
         <div className="mt-2 max-h-36 space-y-1 overflow-y-auto rounded-lg border border-ink-200 p-2">
           {users.map((u) => (
             <label key={u.id} className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={(v.user_ids || []).includes(u.id)} onChange={() => toggle(u.id)} className="h-4 w-4 rounded-sm border-2 border-ink-950 accent-ink-950" />
+              <input type="checkbox" checked={(v.user_ids || []).includes(u.id)} onChange={() => toggle(u.id)} className="h-4 w-4 rounded-xs border-2 border-ink-950 accent-ink-950" />
               {u.name} <span className="text-xs text-ink-400">{u.email}</span>
             </label>
           ))}

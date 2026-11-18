@@ -45,7 +45,7 @@ export default function Projects() {
                   <p className="mb-2 px-1 text-xs font-semibold text-ink-600">{label} <span className="text-ink-400">{col.length}</span></p>
                   <div className="space-y-2">
                     {col.map((w) => (
-                      <button key={w.id} onClick={() => setOpenItem(w.id)} className="block w-full rounded-lg border border-ink-200 bg-white p-2.5 text-left text-sm shadow-sm hover:border-ink-300">
+                      <button key={w.id} onClick={() => setOpenItem(w.id)} className="block w-full rounded-lg border border-ink-200 bg-white p-2.5 text-left text-sm shadow-xs hover:border-ink-300">
                         <p className="font-medium text-ink-800">{w.title}</p>
                         <p className="mt-1 text-[11px] text-ink-500">{w.employee_name || 'Unassigned'}{w.due_date && ` · ${fmtDate(w.due_date, { month: 'short', day: 'numeric' })}`}</p>
                         {w.overdue && <Badge tone="red" className="mt-1">Overdue</Badge>}

@@ -38,7 +38,7 @@ cp .env.example .env        # add MEETSTREAM_API_KEY and ANTHROPIC_API_KEY or GE
 docker compose up --build   # → http://localhost:8000
 ```
 
-The first account you create becomes the admin. Without Docker (Python 3.11+, Node 18+):
+The first account you create becomes the admin. Without Docker (Python 3.12+, Node 22+):
 
 ```bash
 cd backend && python -m venv .venv && .venv/bin/pip install -r requirements.txt

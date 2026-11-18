@@ -201,7 +201,7 @@ export default function Admin() {
               <Input value={f.aliases} onChange={(e) => set({ ...f, aliases: e.target.value })} /></Field>
             <Field label="Projects">
               <div className="flex flex-wrap gap-2">{projects.data.map((p) => (
-                <label key={p.id} className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={(f.project_ids || []).includes(p.id)} className="h-4 w-4 rounded-sm border-2 border-ink-950 accent-ink-950"
+                <label key={p.id} className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={(f.project_ids || []).includes(p.id)} className="h-4 w-4 rounded-xs border-2 border-ink-950 accent-ink-950"
                   onChange={(e) => set({ ...f, project_ids: e.target.checked ? [...(f.project_ids || []), p.id] : f.project_ids.filter((x) => x !== p.id) })} />{p.name}</label>
               ))}</div>
             </Field>

@@ -2,7 +2,7 @@
 
 ## Run from source
 
-Needs Python 3.11+ and Node 18+.
+Needs Python 3.12+ and Node 22+ (CI runs Python 3.15 and Node 26).
 
 ```bash
 cp .env.example .env

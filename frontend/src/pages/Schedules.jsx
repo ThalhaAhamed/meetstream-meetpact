@@ -115,7 +115,7 @@ export default function Schedules() {
           </div>
           {form.mode === 'standup' && <p className="rounded-md border-2 border-ink-950 bg-pop-sky/40 px-3 py-2 text-xs text-ink-950">The stand-up agent goes through the team roster (the selected team, or everyone) one person at a time, and follows up on what each person committed to last time.</p>}
           <ShareFields full={form.share_full} employee={form.share_employee} onChange={({ full, employee }) => setForm({ ...form, share_full: full, share_employee: employee })} />
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} className="h-4 w-4 rounded-sm border-2 border-ink-950 accent-ink-950" />Active</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} className="h-4 w-4 rounded-xs border-2 border-ink-950 accent-ink-950" />Active</label>
           <ErrorBox error={formError} />
         </>}
       </Modal>

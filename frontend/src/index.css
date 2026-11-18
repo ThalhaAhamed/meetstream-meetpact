@@ -1,6 +1,11 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+/* Tailwind 4 changed these defaults (border colour, button cursor); keep the v3 look. */
+@layer base {
+  *, ::after, ::before, ::backdrop, ::file-selector-button { border-color: theme('colors.ink.200'); }
+  button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+}
 
 html { scroll-behavior: smooth; }
 h1, h2, h3 { text-wrap: balance; }

@@ -24,8 +24,8 @@ function TrendChart({ data }) {
       </div>
       <div className="mt-1.5 flex justify-between text-[10px] text-ink-400"><span>{data[0]?.date.slice(5)}</span><span>today</span></div>
       <div className="mt-2 flex gap-4 text-[11px] text-ink-500">
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm border border-ink-950 bg-pop-mint" />Completed</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm border border-ink-950 bg-white" />New work items</span>
+        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-xs border border-ink-950 bg-pop-mint" />Completed</span>
+        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-xs border border-ink-950 bg-white" />New work items</span>
       </div>
     </div>
   )
