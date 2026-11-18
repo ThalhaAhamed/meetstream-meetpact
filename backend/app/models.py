@@ -64,6 +64,15 @@ class Team(Base):
     lead_employee_id: Mapped[Optional[str]] = mapped_column(
         ForeignKey("employees.id", ondelete="SET NULL", use_alter=True, name="fk_team_lead"), nullable=True
     )
+    # Where this team's tasks live: "native" (MeetPact's own board) or "trello".
+    board_source: Mapped[str] = mapped_column(String(20), default="native")
+    board_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    board_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    board_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Trello lists in board order: [{"id", "name", "status"}]; status is a
+    # MeetPact status (planned, in_progress, blocked, completed) or "ignore".
+    board_lists: Mapped[list] = mapped_column(JSON, default=list)
+    board_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -89,6 +98,8 @@ class Employee(Base):
     team_id: Mapped[Optional[str]] = mapped_column(ForeignKey("teams.id", ondelete="SET NULL"), nullable=True)
     # Other names this person shows up as in meetings ("Sam K", "samk-laptop").
     aliases: Mapped[list] = mapped_column(JSON, default=list)
+    # This person's Trello member id (matched by name, or set by hand).
+    trello_member_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -290,6 +301,11 @@ class WorkItem(Base):
     external_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     external_status: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     external_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Card on a team's Trello board: which board/list, and everyone assigned
+    # to it as [{"id", "name", "employee_id"}] (a card can have several).
+    external_board_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    external_list_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    external_members: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

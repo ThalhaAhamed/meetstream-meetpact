@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { CheckCircle2, CircleDashed, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { api } from '../api'
+import TeamBoardSettings from '../components/TeamBoardSettings'
+import TrelloConnect from '../components/TrelloConnect'
 import { useUser, isManager } from '../user'
 import {
   Badge, Button, Card, CardHeader, ErrorBox, Field, Input, Modal, PageHeader, Select, Spinner, Tabs, Textarea, useLoad,
@@ -146,6 +148,10 @@ function SettingsTab() {
           </div>
         </Card>
         <Card>
+          <CardHeader title="Trello" subtitle="Lets teams use a Trello board as their task board" />
+          <div className="p-5"><TrelloConnect canEdit={admin} /></div>
+        </Card>
+        <Card>
           <CardHeader title="Task tools" action={isManager(user) && <Button size="sm" variant="secondary" icon={RefreshCw} onClick={() => api.syncIntegrations().then(() => integrations.reload())}>Sync now</Button>} />
           <div className="divide-y divide-ink-950/15">
             {(integrations.data || []).map((p) => (
@@ -217,7 +223,8 @@ export default function Admin() {
 
       {tab === 'teams' && (
         <Crud title="Teams" rows={teams.data}
-          columns={[['name', 'Team'], ['description', 'Description'], ['lead', 'Team lead', (r) => empName(r.lead_employee_id)]]}
+          columns={[['name', 'Team'], ['description', 'Description'], ['lead', 'Team lead', (r) => empName(r.lead_employee_id)],
+            ['board', 'Task board', (r) => r.board_source === 'trello' ? <Badge tone="blue">Trello · {r.board_name}</Badge> : <Badge>MeetPact</Badge>]]}
           blank={() => ({ name: '', description: '', lead_employee_id: '' })}
           toForm={(r) => ({ ...r, lead_employee_id: r.lead_employee_id || '' })}
           fields={(f, set) => <>
@@ -225,6 +232,7 @@ export default function Admin() {
             <Field label="Description"><Input value={f.description} onChange={(e) => set({ ...f, description: e.target.value })} /></Field>
             <Field label="Team lead" hint="Team leads can see their team's records and reports shared with managers and leads.">
               <Select value={f.lead_employee_id} onChange={(e) => set({ ...f, lead_employee_id: e.target.value })}><option value="">—</option>{empOpts}</Select></Field>
+            {f.id ? <TeamBoardSettings team={f} onSaved={teams.reload} /> : <p className="text-xs text-ink-500">Save the team first, then choose its task board (MeetPact or Trello).</p>}
           </>}
           onSave={async (f) => {
             const body = { name: f.name, description: f.description, lead_employee_id: f.lead_employee_id || null }

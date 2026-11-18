@@ -35,7 +35,8 @@ def user(u: User) -> Dict:
 
 
 def team(t: Team) -> Dict:
-    return {"id": t.id, "name": t.name, "description": t.description, "lead_employee_id": t.lead_employee_id}
+    return {"id": t.id, "name": t.name, "description": t.description, "lead_employee_id": t.lead_employee_id,
+            "board_source": t.board_source or "native", "board_name": t.board_name, "board_url": t.board_url}
 
 
 def project(p: Project) -> Dict:
@@ -45,7 +46,8 @@ def project(p: Project) -> Dict:
 
 def employee(e: Employee) -> Dict:
     return {"id": e.id, "name": e.name, "email": e.email, "title": e.title, "team_id": e.team_id,
-            "team_name": e.team.name if e.team else None, "aliases": e.aliases or [], "active": e.active}
+            "team_name": e.team.name if e.team else None, "aliases": e.aliases or [], "active": e.active,
+            "trello_member_id": e.trello_member_id}
 
 
 def work_item(w: WorkItem) -> Dict:

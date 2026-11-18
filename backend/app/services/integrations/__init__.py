@@ -79,8 +79,22 @@ async def sync_item(db: Session, item: WorkItem) -> Optional[str]:
 
 
 async def sync_all(db: Session) -> Dict[str, int]:
-    counts = {"checked": 0, "changed": 0, "errors": 0}
-    items = db.scalars(select(WorkItem).where(WorkItem.external_id.is_not(None))).all()
+    counts = {"checked": 0, "changed": 0, "errors": 0, "boards": 0}
+    # Teams whose task board is Trello: the whole board in one pass.
+    from app.models import Team
+    from app.services import trello_board
+
+    for team in db.scalars(select(Team).where(Team.board_source == "trello", Team.board_id.is_not(None))).all():
+        try:
+            stats = await trello_board.sync_team(db, team)
+            counts["boards"] += 1
+            counts["changed"] += stats["created"] + stats["updated"] + stats["closed"]
+        except trello_board.TrelloError as exc:
+            counts["errors"] += 1
+            log.info("board sync failed for team %s: %s", team.id, exc)
+    # Single items pushed to a tool by hand (not part of a team board).
+    items = db.scalars(select(WorkItem).where(WorkItem.external_id.is_not(None),
+                                              WorkItem.external_board_id.is_(None))).all()
     for item in items:
         if item.status in ("completed", "dropped") and item.external_status:
             continue

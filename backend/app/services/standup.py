@@ -109,6 +109,22 @@ Rules: never restart the meeting or repeat a phase. After the closing line, do n
 
 People and their carried-over context (JSON):
 {json.dumps(people, indent=1)}
+{board_section(db, meeting)}"""
+
+
+def board_section(db: Session, meeting: Meeting) -> str:
+    """The team's Trello board, if it uses one: open cards and who owns them."""
+    from app.models import Team
+    from app.services import trello_board
+
+    brief = trello_board.board_brief(db, db.get(Team, meeting.team_id) if meeting.team_id else None)
+    if not brief:
+        return ""
+    return f"""
+TEAM BOARD. This is what is still open on the team's task board. In the ROUND, ask each person about their own
+open cards by name (especially overdue ones). In OPEN FLOOR, mention any overdue or unassigned cards in one
+sentence and ask who will take them. Do not read the list out.
+{brief}
 """
 
 

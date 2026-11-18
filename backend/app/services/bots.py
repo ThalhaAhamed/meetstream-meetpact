@@ -85,6 +85,9 @@ async def launch(db: Session, meeting: Meeting, join_at: Optional[datetime] = No
         return meeting
     payload = build_payload(db, meeting, join_at)
     if meeting.mode == "standup":
+        from app.services.processing import refresh_team_board
+
+        await refresh_team_board(db, meeting)  # the host should know the board as it is now
         agent = await meetstream.create_mia_agent(standup.agent_payload(db, meeting, mcp_token(db)))
         agent_id = agent.get("agent_config_id") or agent.get("id")
         if not agent_id:

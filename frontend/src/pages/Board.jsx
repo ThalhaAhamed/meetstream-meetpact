@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Repeat } from 'lucide-react'
 import { api } from '../api'
+import TrelloBoard from '../components/TrelloBoard'
 import WorkItemModal from '../components/WorkItemModal'
 import { Avatar, Badge, ErrorBox, PageHeader, Select, Spinner, cx, fmtDate, useLoad } from '../components/ui'
 import { useUser, isManager } from '../user'
@@ -14,6 +15,7 @@ const COLUMNS = [
 
 export default function Board() {
   const user = useUser()
+  const [teamId, setTeamId] = useState(() => { try { return localStorage.getItem('board-team') || '' } catch { return '' } })
   const [person, setPerson] = useState('')
   const [project, setProject] = useState('')
   const [dragging, setDragging] = useState(null)
@@ -23,14 +25,20 @@ export default function Board() {
   const items = useLoad(() => api.workItems({ employee_id: person || undefined, project_id: project || undefined }), [person, project])
   const people = useLoad(() => api.employees(), [])
   const projects = useLoad(() => api.projects(), [])
+  const teams = useLoad(() => api.teams(), [])
+  const team = (teams.data || []).find((t) => t.id === teamId)
+  const onTrello = team?.board_source === 'trello'
+  const myTeam = (people.data || []).find((e) => e.id === user.employee_id)?.team_id
+  const pickTeam = (id) => { setTeamId(id); try { localStorage.setItem('board-team', id) } catch { /* private mode */ } }
+  const teamMembers = new Set((people.data || []).filter((e) => e.team_id === teamId).map((e) => e.id))
 
   // Only recently finished work in the Done column, so it stays readable.
   const cols = useMemo(() => {
     const cutoff = Date.now() - 14 * 864e5
-    const rows = (items.data || []).filter((w) => w.status !== 'dropped' &&
+    const rows = (items.data || []).filter((w) => w.status !== 'dropped' && (!teamId || teamMembers.has(w.employee_id)) &&
       (w.status !== 'completed' || !w.completed_at || new Date(w.completed_at).getTime() > cutoff))
     return Object.fromEntries(COLUMNS.map(([k]) => [k, rows.filter((w) => w.status === k)]))
-  }, [items.data])
+  }, [items.data, teamId, people.data])
 
   const canEdit = (w) => isManager(user) || w.employee_id === user.employee_id
   const drop = async (status) => {
@@ -43,8 +51,13 @@ export default function Board() {
 
   return (
     <>
-      <PageHeader title="Work board" subtitle="Everything people committed to in meetings. Drag a card to change its status."
+      <PageHeader title="Work board" subtitle={onTrello ? `${team.name} keeps its tasks on Trello. Drag a card to move it there.` : 'Everything people committed to in meetings. Drag a card to change its status.'}
         actions={<>
+          <Select value={teamId} onChange={(e) => pickTeam(e.target.value)} className="w-52" aria-label="Team">
+            <option value="">All teams</option>
+            {(teams.data || []).map((t) => <option key={t.id} value={t.id}>{t.name}{t.board_source === 'trello' ? ' · Trello' : ''}</option>)}
+          </Select>
+          {!onTrello && <>
           <Select value={person} onChange={(e) => setPerson(e.target.value)} className="w-44">
             <option value="">Everyone</option>
             {(people.data || []).filter((e) => e.active).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
@@ -53,7 +66,9 @@ export default function Board() {
             <option value="">All projects</option>
             {(projects.data || []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </Select>
+          </>}
         </>} />
+      {onTrello ? <TrelloBoard teamId={team.id} canEdit={isManager(user) || myTeam === team.id} /> : <>
       <ErrorBox error={error || items.error} />
       {items.loading && !items.data ? <Spinner /> : (
         <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-4 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 xl:grid-cols-4">
@@ -88,6 +103,7 @@ export default function Board() {
       )}
       <WorkItemModal itemId={openItem} onClose={() => setOpenItem(null)} onSaved={items.reload}
         canEdit={!!openItem && (isManager(user) || (items.data || []).find((w) => w.id === openItem)?.employee_id === user.employee_id)} />
+      </>}
     </>
   )
 }

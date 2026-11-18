@@ -129,6 +129,7 @@ class EmployeeBody(BaseModel):
     aliases: List[str] = []
     active: bool = True
     project_ids: Optional[List[str]] = None
+    trello_member_id: Optional[str] = None
 
 
 @router.get("/employees")
@@ -173,7 +174,8 @@ def create_employee(body: EmployeeBody, db: Session = Depends(get_db), _: User =
 @router.put("/employees/{employee_id}")
 def update_employee(employee_id: str, body: EmployeeBody, db: Session = Depends(get_db), _: User = Depends(require_manager)):
     e = db.get(Employee, employee_id) or _404("Employee")
-    for k, v in body.model_dump(exclude={"project_ids"}).items():
+    skip = {"project_ids"} | ({"trello_member_id"} - body.model_fields_set)  # only change it when sent
+    for k, v in body.model_dump(exclude=skip).items():
         setattr(e, k, v)
     _save_projects(db, e.id, body.project_ids)
     db.commit()

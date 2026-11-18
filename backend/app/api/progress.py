@@ -272,7 +272,7 @@ def get_item(item_id: str, db: Session = Depends(get_db), user: User = Depends(c
 
 
 @router.patch("/work-items/{item_id}")
-def edit_item(item_id: str, body: ItemBody, db: Session = Depends(get_db), user: User = Depends(current_user)):
+async def edit_item(item_id: str, body: ItemBody, db: Session = Depends(get_db), user: User = Depends(current_user)):
     """Correct an AI record (or update a manual one). Every change is logged."""
     item = db.get(WorkItem, item_id)
     if not item:
@@ -289,6 +289,9 @@ def edit_item(item_id: str, body: ItemBody, db: Session = Depends(get_db), user:
         if body.status not in ("planned", "in_progress", "blocked", "completed", "dropped"):
             raise HTTPException(400, "Unknown status.")
         tracker.set_status(db, item, body.status, None, note, actor=user.name)
+        status_changed = True
+    else:
+        status_changed = False
     if body.clear_due or (body.due_date and body.due_date != item.due_date):
         new = None if body.clear_due else body.due_date
         db.add(WorkItemEvent(work_item_id=item.id, kind="due_changed", note=f"Deadline {item.due_date or 'none'} → {new or 'none'}", actor=user.name))
@@ -299,7 +302,24 @@ def edit_item(item_id: str, body: ItemBody, db: Session = Depends(get_db), user:
     if body.project_id is not None:
         item.project_id = body.project_id or None
     db.commit()
+    if status_changed and item.external_provider == "trello" and item.external_board_id:
+        await _move_on_team_board(db, item)
     return S.work_item(item)
+
+
+async def _move_on_team_board(db: Session, item: WorkItem) -> None:
+    """A card on a team's Trello board follows a status change made here."""
+    from app.models import Team
+    from app.services import trello_board as tb
+
+    team = db.scalar(select(Team).where(Team.board_id == item.external_board_id, Team.board_source == "trello"))
+    if not team:
+        return
+    try:
+        if await tb.move_card(db, item, team, item.status):
+            db.commit()
+    except tb.TrelloError as exc:
+        raise HTTPException(502, f"Saved here, but Trello was not updated: {exc}")
 
 
 @router.delete("/work-items/{item_id}")

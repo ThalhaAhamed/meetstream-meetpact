@@ -94,7 +94,22 @@ def rematch_participants(db: Session, meeting: Meeting) -> None:
     db.flush()
 
 
+async def refresh_team_board(db: Session, meeting: Meeting) -> None:
+    """Pull the team's Trello board first, so the analysis matches updates to
+    the cards as they are now."""
+    from app.models import Team
+    from app.services import trello_board
+
+    team = db.get(Team, meeting.team_id) if meeting.team_id else None
+    if team and team.board_source == "trello" and team.board_id:
+        try:
+            await trello_board.sync_team(db, team)
+        except trello_board.TrelloError as exc:
+            log.warning("Could not refresh the Trello board before analysis: %s", exc)
+
+
 async def analyse_and_apply(db: Session, meeting: Meeting) -> None:
+    await refresh_team_board(db, meeting)
     rematch_participants(db, meeting)
     turns = [
         {"speaker": s.speaker, "text": s.text, "start": s.start_seconds}
@@ -133,6 +148,13 @@ async def analyse_and_apply(db: Session, meeting: Meeting) -> None:
     meeting.processing_error = None
     db.commit()
     log.info("Processed meeting %s: %s", meeting.id, stats)
+
+    from app.services import trello_board
+
+    try:
+        await trello_board.push_meeting_changes(db, meeting)
+    except Exception:  # never fail a finished report over Trello
+        log.exception("Trello board update failed for %s", meeting.id)
 
     from app.services.integrations import auto_push_new_items
 

@@ -82,6 +82,14 @@ export const api = {
 
   // org
   teams: () => get('/api/teams'),
+  teamBoard: (id) => get(`/api/teams/${id}/board`),
+  chooseBoard: (id, b) => put(`/api/teams/${id}/board`, b),
+  moveCard: (id, b) => post(`/api/teams/${id}/board/move`, b),
+  linkBoardMember: (id, b) => put(`/api/teams/${id}/board/members`, b),
+  trello: () => get('/api/trello'),
+  saveTrello: (b) => put('/api/trello', b),
+  disconnectTrello: () => del('/api/trello'),
+  trelloBoards: () => get('/api/trello/boards'),
   createTeam: (b) => post('/api/teams', b),
   updateTeam: (id, b) => put(`/api/teams/${id}`, b),
   deleteTeam: (id) => del(`/api/teams/${id}`),

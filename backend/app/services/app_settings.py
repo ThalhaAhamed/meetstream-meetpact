@@ -25,6 +25,9 @@ DEFAULTS: Dict[str, Any] = {
     "default_share_employee": {"audience": "managers", "user_ids": []},
     # Create task-tool tasks automatically for new AI action items.
     "auto_push_provider": None,
+    # Trello connection saved from the app (TRELLO_API_KEY / TRELLO_TOKEN in .env win).
+    "trello_api_key": None,
+    "trello_token": None,
     # Bearer token for the stand-up agent's MCP calls (generated on first use).
     "mcp_token": None,
     # Calendar auto-join (calendar connected through MeetStream).
@@ -42,7 +45,7 @@ DEFAULTS: Dict[str, Any] = {
 }
 
 # Never returned by the settings API.
-SECRET_KEYS = {"mcp_token"}
+SECRET_KEYS = {"mcp_token", "trello_token", "trello_api_key"}
 
 
 def get_setting(db: Session, key: str) -> Any:
