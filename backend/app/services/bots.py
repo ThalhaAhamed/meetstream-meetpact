@@ -64,6 +64,11 @@ def build_payload(db: Session, meeting: Meeting, join_at: Optional[datetime]) ->
         # Custom attribute values must be strings.
         "custom_attributes": {"meeting_id": meeting.id, "app": "meetpact"},
     }
+    if meeting.mode == "standup":
+        # The agent closes the meeting itself; if it cannot call the leave tool,
+        # the bot leaves once the call has gone quiet after its goodbye.
+        payload["automatic_leave"]["voice_inactivity_timeout"] = settings.STANDUP_SILENCE_LEAVE_SECONDS
+        payload["automatic_leave"]["everyone_left_timeout"] = min(settings.EVERYONE_LEFT_TIMEOUT, 60)
     if join_at:
         payload["join_at"] = join_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     if settings.public_url:

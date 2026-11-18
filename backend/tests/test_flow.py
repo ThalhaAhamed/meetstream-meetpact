@@ -317,10 +317,10 @@ def test_late_added_employee_is_linked_on_reanalysis(db, people, monkeypatch):
     m = Meeting(title="L", processing_status="done")
     db.add(m)
     db.flush()
-    db.add(MeetingParticipant(meeting_id=m.id, display_name="Thal Ahm", mapping="unmatched"))
-    db.add(TranscriptSegment(meeting_id=m.id, position=0, speaker="Thal Ahm", text="hi"))
+    db.add(MeetingParticipant(meeting_id=m.id, display_name="Noor Haddad", mapping="unmatched"))
+    db.add(TranscriptSegment(meeting_id=m.id, position=0, speaker="Noor Haddad", text="hi"))
     db.commit()
-    emp = Employee(name="Thal Ahm")
+    emp = Employee(name="Noor Haddad")
     db.add(emp)
     db.commit()
     db.refresh(m)
@@ -382,5 +382,52 @@ def test_standup_prompt_asks_consent_once_and_stops():
     from app.services import standup
 
     db = SessionLocal()
-    prompt = standup.system_prompt(db, Meeting(title="s", mode="standup"))
-    assert "never repeat the recording question" in prompt and "stay silent" in prompt
+    prompt = standup.system_prompt(db, Meeting(title="s", mode="standup"), can_leave=False)
+    assert "only once" in prompt and "anything else" in prompt and "leave the meeting now" in prompt
+    assert "stay completely silent" in prompt
+
+
+def test_standup_runs_start_to_finish_and_can_leave(client, db, people, monkeypatch):
+    """The agent opens, goes round, asks for anything else, closes and leaves:
+    with PUBLIC_URL via the end_meeting tool, otherwise via a silence timeout."""
+    from app.config import settings
+    from app.services import bots, standup
+    from app.services.app_settings import set_settings
+
+    m = Meeting(title="Daily", mode="standup", meeting_link="https://meet.google.com/x", team_id=people["team"].id)
+    db.add(m)
+    db.commit()
+    # No public URL: no tool, silence timeout on the bot instead.
+    p = standup.agent_payload(db, m, None)
+    assert p["agent"]["custom_functions"] == [] and p["agent"]["response_type"] == "voice"
+    assert bots.build_payload(db, m, None)["automatic_leave"]["voice_inactivity_timeout"] == settings.STANDUP_SILENCE_LEAVE_SECONDS
+    # With a public URL the agent gets the leave tool.
+    monkeypatch.setattr(settings, "PUBLIC_URL", "https://tracker.example.com")
+    p = standup.agent_payload(db, m, "tok")
+    fn = p["agent"]["custom_functions"][0]
+    assert fn["name"] == "end_meeting" and fn["url"] == "https://tracker.example.com/api/agent/leave"
+    assert p["agent"]["response_type"] == "action" and "end_meeting tool" in p["model"]["system_prompt"]
+
+    # The leave endpoint: auth required, only for live stand-up bots.
+    removed = []
+
+    async def remove_bot(self, bot_id):
+        removed.append(bot_id)
+        return {}
+
+    monkeypatch.setattr(MeetStreamClient, "remove_bot", remove_bot)
+    monkeypatch.setattr("app.api.agent.LEAVE_DELAY_SECONDS", 0)
+    set_settings(db, {"mcp_token": "tok"})
+    m.bot_id, m.bot_status = "bot_su", "in_meeting"
+    db.commit()
+    body = {"name": "end_meeting", "bot": {"bot_id": "bot_su"}, "args": {"reason": "done"}}
+    assert client.post("/api/agent/leave", json=body).status_code == 401
+    r = client.post("/api/agent/leave", json=body, headers={"Authorization": "Bearer tok"})
+    assert r.status_code == 200
+    import time
+    for _ in range(40):
+        if removed:
+            break
+        time.sleep(0.05)
+    assert removed == ["bot_su"]
+    assert client.post("/api/agent/leave", json={"bot": {"bot_id": "nope"}}, headers={"Authorization": "Bearer tok"}).status_code == 404

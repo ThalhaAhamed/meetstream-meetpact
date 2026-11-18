@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import auth_routes, calendar, knowledge, mcp, meetings, org, progress, webhooks
+from app.api import agent, auth_routes, calendar, knowledge, mcp, meetings, org, progress, webhooks
 from app.config import REPO_DIR, settings
 from app.db import init_db
 
@@ -61,7 +61,7 @@ app.add_middleware(
 )
 
 for r in (auth_routes.router, org.router, meetings.router, progress.router, calendar.router, knowledge.router,
-          webhooks.router, mcp.router):
+          agent.router, webhooks.router, mcp.router):
     app.include_router(r)
 
 

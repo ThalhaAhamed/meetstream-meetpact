@@ -12,9 +12,7 @@ import { Avatar, cx } from './ui'
 function Logo() {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="flex h-8 w-8 items-center justify-center rounded-md border-2 border-ink-950 bg-pop-yellow shadow-press">
-        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="#111" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4 10-11" /></svg>
-      </div>
+      <img src="/logo-mark.svg" alt="" className="h-9 w-9" />
       <div className="leading-tight">
         <p className="text-sm font-bold text-ink-950">MeetPact</p>
         <p className="text-[11px] font-medium text-ink-600">AI notetaker · MeetStream</p>

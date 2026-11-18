@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     EVERYONE_LEFT_TIMEOUT: int = 120
     IN_CALL_RECORDING_TIMEOUT: int = 14400  # API minimum is 600
     SCHEDULE_LEAD_MINUTES: int = 10  # create join_at bots this long before start
+    # Stand-up bots leave after this many seconds of silence once the agent has
+    # said goodbye (the fallback when there is no PUBLIC_URL for the leave tool).
+    STANDUP_SILENCE_LEAVE_SECONDS: int = 60
 
     # ---- Stand-up agent (MeetStream MIA) ---------------------------------
     # Default: Gemini Live (speech-to-speech), which a MeetStream account can use
