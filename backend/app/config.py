@@ -51,11 +51,15 @@ class Settings(BaseSettings):
     SCHEDULE_LEAD_MINUTES: int = 10  # create join_at bots this long before start
 
     # ---- Stand-up agent (MeetStream MIA) ---------------------------------
-    MIA_MODE: str = "pipeline"
-    MIA_MODEL_PROVIDER: str = "openai"
-    MIA_MODEL: str = "gpt-4.1"
-    MIA_VOICE_PROVIDER: str = "openai"
-    MIA_VOICE: str = "nova"
+    # Default: Gemini Live (speech-to-speech), which a MeetStream account can use
+    # without adding its own provider key. Pipeline mode chains a transcriber,
+    # an LLM and a voice; its providers' keys must be added in MeetStream first
+    # (e.g. MIA_MODE=pipeline, MIA_MODEL_PROVIDER=anthropic, MIA_VOICE_PROVIDER=elevenlabs).
+    MIA_MODE: str = "realtime"
+    MIA_MODEL_PROVIDER: str = "google"
+    MIA_MODEL: str = ""  # required for openai only
+    MIA_VOICE_PROVIDER: str = "openai"  # pipeline mode only
+    MIA_VOICE: str = "Puck"  # realtime: Google Puck/Charon/Kore/...; pipeline: the provider's voice id
     MIA_TRANSCRIBER_PROVIDER: str = "deepgram"
     MIA_TRANSCRIBER_MODEL: str = "nova-3"
 

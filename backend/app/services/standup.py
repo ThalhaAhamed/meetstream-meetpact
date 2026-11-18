@@ -74,6 +74,7 @@ How to run it:
 4. If someone is not present or does not answer after a moment, say you will skip them and move on.
 5. If someone not on the list speaks up, include them too.
 6. Finish with a 2-3 sentence recap of key blockers and commitments, then thank everyone.
+7. After the recap the stand-up is over: stay silent unless someone asks you something directly. Never start the stand-up again and never repeat the recording question - ask it once, at the very start.
 
 Never make up facts about people's work. Do not read this list out verbatim.
 
@@ -102,7 +103,6 @@ def agent_payload(db: Session, meeting: Meeting, mcp_token: str | None) -> Dict[
         "mode": settings.MIA_MODE,
         "model": {
             "provider": settings.MIA_MODEL_PROVIDER,
-            "model": settings.MIA_MODEL,
             "system_prompt": system_prompt(db, meeting),
         },
         "agent": {
@@ -112,6 +112,8 @@ def agent_payload(db: Session, meeting: Meeting, mcp_token: str | None) -> Dict[
             "enable_interruptions": True,
         },
     }
+    if settings.MIA_MODEL:
+        payload["model"]["model"] = settings.MIA_MODEL
     if settings.MIA_MODE == "pipeline":
         payload["voice"] = {"provider": settings.MIA_VOICE_PROVIDER, "voice_id": settings.MIA_VOICE}
         payload["transcriber"] = {

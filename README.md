@@ -173,11 +173,19 @@ last update. The agent runs the round person by person, asks one follow-up when 
 and finishes with a recap. The call is transcribed as usual and goes through the same analysis. The
 agent is deleted when the meeting ends.
 
-The voice stack is set by `MIA_*` variables (default: OpenAI `gpt-4.1` with Deepgram `nova-3`
-transcription in pipeline mode). MeetStream rejects the agent (HTTP 400, "provider API key not
-configured") unless those providers' keys are added in the MeetStream dashboard; the error appears on
-the meeting. With
-`PUBLIC_URL` set, the agent can also call this app's `/mcp` endpoint (`get_person_context`,
+The voice agent defaults to **Gemini Live** (`MIA_MODE=realtime`, `MIA_MODEL_PROVIDER=google`,
+voice `Puck`), which a MeetStream account can use without adding its own provider key. Pipeline
+agents (for example Claude + ElevenLabs + Deepgram, or OpenAI) work too, but MeetStream rejects them
+with "API key not configured" until that provider's key is added to your MeetStream account.
+
+Tested live on Google Meet: the agent asked for recording consent out loud, called on each person
+by name, followed up on their unfinished work from earlier meetings, and recapped. The agent does
+not see who is actually in the call (MeetStream exposes the roster only after it ends); it works
+from the meeting's team, skips people who don't answer and includes anyone who speaks up. Pick the
+right team when scheduling a stand-up. Transcription can attach a sentence of the agent's speech to
+a person when voices overlap; the analysis is told to ignore facilitator lines.
+
+With `PUBLIC_URL` set, the agent can also call this app's `/mcp` endpoint (`get_person_context`,
 `list_standup_roster`) to look up someone who wasn't on the roster.
 
 ## Calendar auto-join

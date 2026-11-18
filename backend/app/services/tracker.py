@@ -147,7 +147,8 @@ def create_item(
 _FILLER = {
     "a", "an", "the", "to", "of", "on", "for", "and", "in", "with", "my", "our", "their", "this", "that", "it",
     "work", "working", "address", "fix", "handle", "do", "finish", "complete", "start", "continue", "look", "into",
-    "task", "item", "issue", "problem", "some", "current", "is", "be", "get",
+    "task", "item", "issue", "problem", "some", "current", "is", "be", "get", "today", "tomorrow",
+    "will", "done", "all", "stuff", "things", "everything",
 }
 
 
@@ -264,6 +265,8 @@ def apply_analysis(db: Session, meeting: Meeting, analysis: MeetingAnalysis, exc
         # open items first so nothing is duplicated.
         for status, texts in (("completed", rep.completed), ("in_progress", rep.in_progress), ("planned", rep.planned)):
             for text in texts:
+                # "Finish the current task today" names no work: not trackable on its own.
+                vague = len(_content_words(text)) < 2
                 dup = _find_duplicate(open_now, text) or _find_duplicate(
                     [w for w in db.scalars(select(WorkItem).where(WorkItem.id.in_(touched_items)))], text)
                 if dup:
@@ -271,6 +274,8 @@ def apply_analysis(db: Session, meeting: Meeting, analysis: MeetingAnalysis, exc
                         set_status(db, dup, status, meeting, "Reported in meeting")
                     touched_items.add(dup.id)
                     dup.last_meeting_id = meeting.id
+                    continue
+                if vague:
                     continue
                 item = create_item(db, employee_id=emp.id, title=text, status=status, meeting=meeting,
                                    project_id=_project_for(db, None, meeting.project_id))

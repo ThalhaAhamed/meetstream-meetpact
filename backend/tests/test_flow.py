@@ -365,3 +365,22 @@ def test_commitment_already_applied_as_deadline_is_not_duplicated(db, people):
     db.commit()
     items = db.query(WorkItem).filter_by(employee_id=sam.id).all()
     assert len(items) == 1 and str(items[0].due_date) == "2026-11-18"
+
+
+def test_vague_update_lines_do_not_become_items(db, people):
+    """Live stand-up test: 'Finish the current task today' became its own work item."""
+    sam = people["emps"]["sam"]
+    m = _meeting(db, "general")
+    tracker.apply_analysis(db, m, _analysis(_report(sam, planned=["Finish the current task today", "Write the export API docs"])), set())
+    db.commit()
+    assert [w.title for w in db.query(WorkItem).filter_by(employee_id=sam.id)] == ["Write the export API docs"]
+
+
+def test_standup_prompt_asks_consent_once_and_stops():
+    from app.models import Meeting
+    from app.db import SessionLocal
+    from app.services import standup
+
+    db = SessionLocal()
+    prompt = standup.system_prompt(db, Meeting(title="s", mode="standup"))
+    assert "never repeat the recording question" in prompt and "stay silent" in prompt

@@ -89,6 +89,7 @@ Rules:
 - Refer to people by name. When a pronoun is needed, use "they"; never infer gender from a name.
 - "blockers" lists only NEW blockers. A blocker already in the person's open_blockers stays open by itself; do not restate it in other words. Put its id in resolved_blocker_ids only if it was said to be resolved.
 - A deadline for an existing open item goes in that item's existing_item_updates.due_date; do not also add it as a separate commitment.
+- In an AI-led stand-up (mode "standup") the AI facilitator asks the questions. Transcription can attach a sentence to the wrong speaker, so treat questions, greetings, recaps and recording notices as the facilitator's even if labelled with a person's name, and record only what the people themselves reported.
 - Never invent placeholder titles such as "Unnamed task". If someone does not name the work, title it from what they said about it (e.g. "Finish and test current feature"), or leave it out."""
 
 
