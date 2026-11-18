@@ -7,12 +7,12 @@ export default {
         sans: ['"Space Grotesk"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['"Space Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
-      // Soft Swiss-grid neo-brutalism ("Cobalt mist"): hard offset shadows in
-      // deep navy ink, rounded corners, pastel fills, strict grid.
+      // Soft Swiss-grid neo-brutalism ("Butter and charcoal"): hard offset shadows in
+      // warm charcoal ink, rounded corners, pastel fills, strict grid.
       boxShadow: {
-        card: '4px 4px 0 0 #151C2E',
-        lift: '6px 6px 0 0 #151C2E',
-        press: '2px 2px 0 0 #151C2E',
+        card: '4px 4px 0 0 #22201B',
+        lift: '6px 6px 0 0 #22201B',
+        press: '2px 2px 0 0 #22201B',
       },
       borderRadius: {
         DEFAULT: '0.5rem',
@@ -26,13 +26,15 @@ export default {
       },
       animation: { 'fade-up': 'fade-up 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both', shimmer: 'shimmer 1.6s linear infinite' },
       colors: {
-        ink: { 50: '#F4F6FA', 100: '#E8EDF5', 200: '#D5DDEA', 300: '#B7C3D6', 400: '#8B98AF', 500: '#66738B', 600: '#4D5970', 700: '#3A4559', 800: '#283247', 900: '#1C2438', 950: '#151C2E' },
-        brand: { 50: '#EEF4FF', 100: '#E1EAFB', 200: '#C7DAFF', 300: '#9EC1FF', 400: '#77A6F7', 500: '#4F86E8', 600: '#3A6ACB', 700: '#2E54A3', 800: '#26447F', 900: '#1F3662' },
-        // One brand colour (accent: cobalt). Every other pastel has one meaning:
-        // yellow = blocked / needs attention, red = overdue / failed, mint = done,
-        // sky = in progress / info, orange (peach) = keeps slipping.
-        accent: { DEFAULT: '#9EC1FF', soft: '#E1EAFB' },
-        pop: { yellow: '#FFE38F', pink: '#FFC6DA', mint: '#BFEBD3', sky: '#C4E1FF', orange: '#FFD0A8', lilac: '#DCCFFF', red: '#FFB5B0' },
+        ink: { 50: '#FAF7EE', 100: '#F2EEE3', 200: '#E3DDCD', 300: '#C9C1AD', 400: '#9E9684', 500: '#776F5F', 600: '#5C5548', 700: '#463F35', 800: '#332E27', 900: '#29251F', 950: '#22201B' },
+        brand: { 50: '#FFFBEB', 100: '#FFF3C4', 200: '#FFE89A', 300: '#FFD95C', 400: '#F5C633', 500: '#D9A50F', 600: '#B3850A', 700: '#8A650B', 800: '#6B4F0E', 900: '#58420F' },
+        // One brand colour (accent: butter). Every other pastel has one meaning.
+        // The names are roles, not hues: "yellow" is the warning role (blocked /
+        // needs attention, peach here so it never looks like the brand) and
+        // "orange" the keeps-slipping role (lilac); red = overdue / failed,
+        // mint = done, sky = in progress / info.
+        accent: { DEFAULT: '#FFD95C', soft: '#F6ECC4' },
+        pop: { yellow: '#FFC59E', pink: '#FFC6DA', mint: '#BFEBD3', sky: '#C4E1FF', orange: '#DCCFFF', lilac: '#DCCFFF', red: '#FFB5B0' },
         // Readable text versions of the signal colours.
         signal: { red: '#B3261E', amber: '#8A5A00' },
       },
