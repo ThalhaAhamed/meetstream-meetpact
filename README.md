@@ -78,8 +78,6 @@ To send a bot into a call you need a MeetStream API key: sign up at [app.meetstr
 <img src="docs/screenshots/work-board.png" alt="Work board: planned, in progress, blocked and done" width="900" />
 <img src="docs/screenshots/standup-voice.png" alt="Choosing the stand-up host's voice: Gemini Live, OpenAI, Grok or Claude" width="900" />
 <img src="docs/screenshots/setup-guide.png" alt="Setup guide: pick the AI that writes the notes, with a live check" width="900" />
-<br />
-<img src="docs/screenshots/mobile.png" alt="Team overview on a phone" width="300" />
 </div>
 
 ## 🎬 Demo
