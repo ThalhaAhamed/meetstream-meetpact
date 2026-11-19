@@ -11,7 +11,7 @@
 [![Built on MeetStream](https://img.shields.io/badge/built%20on-MeetStream-FFD95C)](https://meetstream.ai)
 [![License: MIT](https://img.shields.io/badge/license-MIT-FFD95C)](LICENSE)
 
-[Quick start](#-quick-start) · [Demo](#-demo) · [Architecture](#%EF%B8%8F-architecture) · [Docker](#-docker) · [Configuration](#%EF%B8%8F-configuration) · [Roadmap](#%EF%B8%8F-roadmap) · [FAQ](#-faq)
+[Quick start](#-quick-start) · [Demo](#-demo) · [Architecture](#%EF%B8%8F-architecture) · [Docker](#-docker) · [Configuration](#%EF%B8%8F-configuration) · [FAQ](#-faq)
 
 </div>
 
@@ -58,9 +58,11 @@ To send a bot into a call you need a MeetStream API key: sign up at [app.meetstr
 ## ✨ Features
 
 - 🎥 **Meeting capture** - the bot joins Google Meet, Zoom or Teams on demand, on a schedule, or from Google Calendar; it posts one short recording note and can be paused or removed.
+- 📅 **Calendar auto-join** - connect Google Calendar in one click (or Outlook with a refresh token) and the bot books itself into every meeting with a link, minus the titles you filter out.
+- 🚪 **Joins without the host** - optionally, Google Meet bots join signed in to a bot account on the invite, so they don't wait to be admitted; an admitted bot waits up to 30 minutes for a late host.
 - 🧠 **Knowledge per person** - summary, decisions, action items, and each person's update: done, in progress, planned, commitments with deadlines, blockers.
 - 🧑‍✈️ **AI stand-up host** - opens with *"tell me what you worked on, any updates and your status"*, goes round each person by name, asks about their open tasks, takes updates from anyone else in the call, recaps and leaves.
-- 🗂️ **Work board or Trello** - each team picks MeetPact's board or its Trello board, shown inside MeetPact with who is on each card.
+- 🗂️ **Work board or Trello** - each team picks MeetPact's board or its Trello board, shown inside MeetPact with who is on each card. ClickUp, Jira, Asana and monday.com sync too ([docs/integrations.md](docs/integrations.md)).
 - 🚨 **Needs your attention** - the dashboard leads with overdue work, open blockers and work that keeps slipping.
 - 🔍 **Ask** - "What is blocking the team?" Answers cite the meeting and only use what you're allowed to see.
 - 🔐 **Roles and sharing** - admins, managers, team leads, employees; per-meeting sharing; automatic deletion of recordings.
@@ -72,16 +74,17 @@ To send a bot into a call you need a MeetStream API key: sign up at [app.meetstr
 <div align="center">
 <img src="docs/screenshots/dashboard.png" alt="Team overview: needs your attention, stat tiles and the latest update from each person" width="900" />
 <img src="docs/screenshots/meeting-report.png" alt="Meeting report: summary, key points, decisions and action items" width="900" />
+<img src="docs/screenshots/employee-profile.png" alt="A person's page: open work, completed items, updates, blockers and meetings" width="900" />
 <img src="docs/screenshots/work-board.png" alt="Work board: planned, in progress, blocked and done" width="900" />
 <img src="docs/screenshots/standup-voice.png" alt="Choosing the stand-up host's voice: Gemini Live, OpenAI, Grok or Claude" width="900" />
 <img src="docs/screenshots/setup-guide.png" alt="Setup guide: pick the AI that writes the notes, with a live check" width="900" />
+<br />
+<img src="docs/screenshots/mobile.png" alt="Team overview on a phone" width="300" />
 </div>
 
 ## 🎬 Demo
 
-**From meeting to knowledge** - team overview, a meeting report, each person's update, the work board and Ask:
-
-<div align="center"><img src="docs/screenshots/demo.gif" alt="Clicking through the team overview, a meeting report, the work board and Ask" width="900" /></div>
+The walkthrough at the top goes from the team overview to a meeting report, each person's update, the work board and Ask.
 
 **Ask** - a grounded answer with the meetings it came from:
 
@@ -131,7 +134,10 @@ Set from the **setup guide** and **Admin**, saved in the database. An **environm
 |---|---|---|
 | `MEETSTREAM_API_KEY` | from the guide | Sends bots and the stand-up host |
 | `ANALYSIS_PROVIDER` + its key | first key found | `gemini`, `anthropic`, `openai` or `xai` for notes and Ask |
-| `APP_URL` | `http://localhost:5173` | Your domain on a server; links, Google sign-in and MeetStream callbacks follow it |
+| `APP_URL` | `http://localhost:8000` (Docker) | Your domain on a server; links, Google sign-in and MeetStream callbacks follow it |
+| `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` | - | One-click Google Calendar connect |
+| `NO_ONE_JOINED_TIMEOUT` | `600` | Seconds an admitted bot waits for a late host (up to 1800) |
+| `GOOGLE_BOT_LOGIN_DOMAIN` | - | Google Meet bots join signed in, without being admitted |
 | `DATABASE_URL` | local SQLite | `postgresql+psycopg://…` for PostgreSQL |
 | `TUNNEL` | `auto` | On a laptop, start a Cloudflare tunnel when `cloudflared` is installed |
 
@@ -148,20 +154,14 @@ Listed in [`backend/requirements.txt`](backend/requirements.txt) and [`frontend/
 ## 🧪 Running tests
 
 ```bash
-cd backend && python -m pytest      # 54 backend tests, throwaway SQLite, no network
+cd backend && python -m pytest      # throwaway SQLite, MeetStream and AI providers mocked, no network
 cd frontend && npm test             # vitest
+cd frontend && npm run build        # production build
 ```
 
 ## 🔁 CI/CD
 
-**Every push / PR** ([`ci.yml`](.github/workflows/ci.yml)): backend tests, frontend tests and build, Docker image build.
-
-## 🗺️ Roadmap
-
-- [ ] Tagged releases with a published Docker image
-- [ ] Outlook calendar tested end to end
-- [ ] ClickUp, Jira, Asana and monday.com tested end to end
-- [ ] Speaker names from MeetStream's live roster for people already in the call
+**Every push / PR** ([`ci.yml`](.github/workflows/ci.yml)): backend tests, frontend tests and build, Docker image build. Dependabot opens weekly updates for Python, npm, Docker and Actions.
 
 ## 🩺 Troubleshooting
 
@@ -171,14 +171,20 @@ cd frontend && npm test             # vitest
 | Voice check: *API key not configured* | MeetStream has no key for that provider | Add it at app.meetstream.ai → Configure → Integrations |
 | Report not analysed | AI key or model rejected | Setup guide → AI notes → *Save and check*, then **Re-analyse** |
 | Names misheard in the notes | Speech-to-text | Add aliases under Admin → Employees and keywords on projects |
+| Bot waits in the lobby | Google Meet asks someone to admit a guest bot | Admit it, use a [signed-in bot](docs/configuration.md#signed-in-google-meet-bot), or set the meeting's access to *Open* |
 
 More: [docs/troubleshooting.md](docs/troubleshooting.md).
 
 ## ❓ FAQ
 
 **Does the AI change our board?** Not by default. Meetings add knowledge; people manage the board. *Admin → Let meetings update the board* turns automatic tasks on.
+
 **Which AI models?** Gemini, Claude, OpenAI or Grok for notes; the stand-up voice is Gemini Live, OpenAI, Grok or Claude.
+
+**What if the host doesn't join?** A guest bot has to be admitted. A [signed-in Google Meet bot](docs/configuration.md#signed-in-google-meet-bot) on the invite joins by itself, and `NO_ONE_JOINED_TIMEOUT` keeps an admitted bot waiting up to 30 minutes.
+
 **Can the bot see who's in the call?** It gets live join and leave events when MeetStream can reach your server; it also asks "anyone else with an update?"
+
 **Is it free?** MIT, no accounts, no telemetry. You pay only MeetStream and the AI provider you choose.
 
 ## 📚 Documentation
