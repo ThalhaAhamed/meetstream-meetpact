@@ -168,7 +168,9 @@ class MeetStreamClient:
 
     async def connect_google_calendar(self, client_id: str, client_secret: str, refresh_token: str) -> Dict[str, Any]:
         # Field names need the google_ prefix; plain client_id etc. are rejected.
-        body = {"google_client_id": client_id, "google_client_secret": client_secret, "google_refresh_token": refresh_token}
+        # replace: reconnecting an account MeetStream already has is a 409 without it.
+        body = {"google_client_id": client_id, "google_client_secret": client_secret,
+                "google_refresh_token": refresh_token, "replace": True}
         return await self._request("POST", "/calendar/create_calendar", json=body, timeout=60.0)
 
     async def connect_outlook_calendar(self, client_id: str, client_secret: str, refresh_token: str) -> Dict[str, Any]:

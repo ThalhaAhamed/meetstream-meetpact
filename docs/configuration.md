@@ -17,7 +17,7 @@ consent wording, sharing defaults, delivery, retention) live in **Admin → Bot 
 | Variable | Default | Purpose |
 |---|---|---|
 | `DATABASE_URL` | `sqlite:///backend/data/tracker.db` | Any SQLAlchemy URL. Postgres needs a driver such as `psycopg`. |
-| `SECRET_KEY` | generated | Signs session cookies. Generated and stored in `backend/data/` when empty. |
+| `SECRET_KEY` | generated | Signs session cookies. Generated when empty and stored beside the SQLite database (`backend/data/`, or the `/data` volume in Docker). |
 | `PUBLIC_URL` | - | Address MeetStream uses to reach the backend, if it must differ from `APP_URL`. Empty: `APP_URL` when it is public, else the automatic tunnel. |
 | `TUNNEL` | `auto` | Without `PUBLIC_URL`, start a Cloudflare quick tunnel automatically when `cloudflared` is installed. `off` disables it. Only MeetStream's paths are reachable through it. |
 | `CLOUDFLARED_PATH` | - | Path to `cloudflared` if it isn't on `PATH`. |
@@ -52,9 +52,39 @@ who is in the call and leave when it is done. You have three options:
 | `RETENTION_HOURS` | `168` | How long MeetStream keeps the recording. |
 | `WAITING_ROOM_TIMEOUT` | `600` | Seconds to wait to be admitted. |
 | `EVERYONE_LEFT_TIMEOUT` | `120` | Seconds to stay after everyone else leaves. |
+| `NO_ONE_JOINED_TIMEOUT` | `600` | Seconds an admitted bot waits for anyone else to join, e.g. a late host. MeetStream accepts 60 to 1800. |
+| `GOOGLE_BOT_LOGIN_DOMAIN` | - | Google Meet bots join signed in to an account on this Google Workspace domain instead of as a guest. See *Signed-in Google Meet bot* below. |
+| `GOOGLE_BOT_SIGN_IN_EMAIL` | - | Always use this bot account; put it on the calendar invites. |
+| `GOOGLE_BOT_STRICT_EMAIL` | `true` | With `GOOGLE_BOT_SIGN_IN_EMAIL`: fail if that account is busy, rather than use another one from the domain. |
 | `IN_CALL_RECORDING_TIMEOUT` | `14400` | Maximum recording length (MeetStream minimum: 600). |
 | `SCHEDULE_LEAD_MINUTES` | `10` | How far ahead scheduled meetings are booked with MeetStream (`join_at`). |
 | `MEETSTREAM_WEBHOOK_SECRET` | - | Verifies signed workspace webhooks. |
+
+### Signed-in Google Meet bot
+
+A guest bot waits in the lobby until someone admits it, so it never gets in if the host does not
+come. A bot signed in to a Google account joins without knocking when:
+
+* its email is a guest on the calendar invite, and
+* the meeting's access is *Trusted* or *Restricted*, and
+* the waiting room is off (with it on, a signed-in bot waits too).
+
+Setup is done once, on Google and MeetStream (see MeetStream's *Google signed-in bots* guide):
+
+1. Create a Google Workspace domain that holds only bot accounts, for example `bots.example.com`
+   with `notetaker@bots.example.com`. A personal Gmail address cannot be used.
+2. Point that domain's single sign-on at MeetStream as the SAML identity provider, with a key and
+   certificate pair. No passwords are stored.
+3. Register the domain and the account with MeetStream (`POST /google-login-domains`,
+   `POST /google-logins`).
+4. Set `GOOGLE_BOT_LOGIN_DOMAIN` (and usually `GOOGLE_BOT_SIGN_IN_EMAIL`) and restart.
+
+Then add the bot's email to the meetings' calendar invites. Only Google Meet links are affected.
+The bot's name and photo come from its Google account, not `BOT_NAME`. If signing in fails the bot
+does not fall back to a guest join: the meeting shows *Failed*.
+
+Without a bot domain, the other way in is the meeting itself: in Google Meet's host controls, turn
+the waiting room off and set access to *Open*, where your account offers it.
 
 ## AI analysis
 

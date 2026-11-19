@@ -421,3 +421,31 @@ def test_default_meetings_only_add_knowledge(db, people):
     assert "Shipped it" in note and "reported as completed" in note
     assert db.query(EmployeeUpdate).filter_by(meeting_id=m.id).one().completed == ["Build export API", "Write docs"]
     assert db.query(Blocker).filter_by(employee_id=priya.id, status="open").count() == 1
+
+
+def test_bot_payload_no_one_joined_timeout_and_signed_in_google(db, monkeypatch):
+    """A late host: the admitted bot waits NO_ONE_JOINED_TIMEOUT (clamped to the
+    API's 60-1800). With a bot domain set, Google Meet bots join signed in."""
+    from app.config import settings
+    from app.services import bots
+
+    meet = Meeting(title="Sync", meeting_link="https://meet.google.com/abc-defg-hij")
+    zoom = Meeting(title="Zoom", meeting_link="https://us02web.zoom.us/j/123")
+    db.add_all([meet, zoom])
+    db.commit()
+
+    monkeypatch.setattr(settings, "NO_ONE_JOINED_TIMEOUT", 5000)
+    p = bots.build_payload(db, meet, None)
+    assert p["automatic_leave"]["no_one_joined_timeout"] == 1800
+    assert "google_meet" not in p  # guest join by default
+
+    monkeypatch.setattr(settings, "GOOGLE_BOT_LOGIN_DOMAIN", "bots.example.com")
+    assert bots.build_payload(db, meet, None)["google_meet"] == {
+        "login_required": True, "google_login_domain": "bots.example.com"}
+    assert "google_meet" not in bots.build_payload(db, zoom, None)
+
+    monkeypatch.setattr(settings, "GOOGLE_BOT_SIGN_IN_EMAIL", "notetaker@bots.example.com")
+    monkeypatch.setattr(settings, "GOOGLE_BOT_STRICT_EMAIL", False)
+    assert bots.build_payload(db, meet, None)["google_meet"] == {
+        "login_required": True, "google_login_domain": "bots.example.com",
+        "sign_in_email": "notetaker@bots.example.com", "strict_email": False}

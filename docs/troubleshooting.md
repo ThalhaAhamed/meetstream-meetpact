@@ -2,7 +2,9 @@
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| The bot never appears in the meeting | It is in the waiting room. Google Meet often needs the host to admit an anonymous bot. | Admit it. It waits `WAITING_ROOM_TIMEOUT` seconds, then the meeting shows *Not admitted*. |
+| The bot never appears in the meeting | It is in the waiting room. Google Meet often needs the host to admit an anonymous bot. | Admit it. It waits `WAITING_ROOM_TIMEOUT` seconds, then the meeting shows *Not admitted*. To have it join without the host, use a [signed-in Google Meet bot](configuration.md#signed-in-google-meet-bot) or set the meeting's access to *Open*. |
+| The bot leaves an empty meeting before the host arrives | Nobody else joined within `NO_ONE_JOINED_TIMEOUT` seconds. | Raise `NO_ONE_JOINED_TIMEOUT` (up to 1800). |
+| A signed-in Google Meet bot shows *Failed* | MeetStream could not sign in to the bot account (`GoogleSignInFailed`): the domain or account isn't registered, or that account is busy with `GOOGLE_BOT_STRICT_EMAIL=true`. | Check the registration with MeetStream, or set `GOOGLE_BOT_STRICT_EMAIL=false`. |
 | Meeting shows *Denied* | A host refused the bot. | Not retried on purpose. Send it again if that was a mistake. |
 | "MEETSTREAM_API_KEY is not set" | No key in `.env`. | Add it and restart the backend. |
 | Stand-up fails with "API key not configured for: model.provider=openai" | The voice agent uses a provider whose key isn't on your MeetStream account. | Use the default Gemini Live (`MIA_MODE=realtime`, `MIA_MODEL_PROVIDER=google`) or add that provider's key in MeetStream. |

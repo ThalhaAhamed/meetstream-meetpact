@@ -52,7 +52,18 @@ class Settings(BaseSettings):
     RETENTION_HOURS: int = 168
     WAITING_ROOM_TIMEOUT: int = 600
     EVERYONE_LEFT_TIMEOUT: int = 120
+    # How long an admitted bot waits for anyone else to arrive (a late host).
+    # MeetStream accepts 60-1800; values outside are clamped.
+    NO_ONE_JOINED_TIMEOUT: int = 600
     IN_CALL_RECORDING_TIMEOUT: int = 14400  # API minimum is 600
+    # Signed-in Google Meet bot. A guest bot has to be admitted; a bot signed in
+    # to an account that is on the calendar invite joins Trusted / Restricted
+    # meetings without knocking (not when the waiting room is on). Needs a
+    # Google Workspace domain of bot accounts registered with MeetStream - see
+    # docs/configuration.md. Empty: the bot joins as a guest.
+    GOOGLE_BOT_LOGIN_DOMAIN: str = ""
+    GOOGLE_BOT_SIGN_IN_EMAIL: str = ""  # optional: always use this bot account
+    GOOGLE_BOT_STRICT_EMAIL: bool = True  # fail rather than use another account if that one is busy
     SCHEDULE_LEAD_MINUTES: int = 10  # create join_at bots this long before start
     # Without PUBLIC_URL (no leave tool) a stand-up bot leaves 60 s after everyone
     # else has left; this silence timeout is only a safety net. MeetStream counts
@@ -159,11 +170,21 @@ class Settings(BaseSettings):
 settings = Settings()
 
 
+def _data_dir() -> Path:
+    """Where generated state lives: beside a file-based SQLite database (the
+    /data volume in Docker, so it survives a container being recreated),
+    else backend/data/."""
+    url = settings.DATABASE_URL
+    if url.startswith("sqlite:///") and ":memory:" not in url:
+        return Path(url[len("sqlite:///"):]).parent
+    return BACKEND_DIR / "data"
+
+
 def secret_key() -> str:
-    """The cookie-signing key: from env, else a random one persisted in data/."""
+    """The cookie-signing key: from env, else a random one persisted beside the database."""
     if settings.SECRET_KEY:
         return settings.SECRET_KEY
-    path = BACKEND_DIR / "data" / ".secret_key"
+    path = _data_dir() / ".secret_key"
     path.parent.mkdir(parents=True, exist_ok=True)
     if not path.exists():
         path.write_text(secrets.token_urlsafe(48), encoding="utf-8")

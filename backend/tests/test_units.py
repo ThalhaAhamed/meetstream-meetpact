@@ -212,3 +212,37 @@ def test_openai_and_grok_analysis(monkeypatch):
     monkeypatch.setattr(settings, "OPENAI_API_KEY", "sk-test")
     asyncio.run(extraction.analyse_meeting("transcript"))
     assert sent["url"] == "https://api.openai.com/v1/chat/completions" and sent["body"]["model"] == settings.OPENAI_MODEL
+
+
+def test_google_calendar_connect_asks_meetstream_to_replace():
+    """Reconnecting a Google account MeetStream already has must not 409."""
+    import asyncio
+    from app.services.meetstream import MeetStreamClient
+
+    seen = {}
+
+    async def fake_request(self, method, path, **kw):
+        seen.update(method=method, path=path, json=kw.get("json"))
+        return {"user_email": "a@example.com"}
+
+    client = MeetStreamClient.__new__(MeetStreamClient)
+    MeetStreamClient._request, original = fake_request, MeetStreamClient._request
+    try:
+        asyncio.run(client.connect_google_calendar("id", "secret", "refresh"))
+    finally:
+        MeetStreamClient._request = original
+    assert seen["path"] == "/calendar/create_calendar"
+    assert seen["json"]["replace"] is True
+    assert seen["json"]["google_refresh_token"] == "refresh"
+
+
+def test_generated_secret_key_lives_beside_the_database(tmp_path, monkeypatch):
+    """In Docker the database is on the /data volume; the key must be too, or
+    every recreated container signs everyone out."""
+    from app import config
+
+    monkeypatch.setattr(config.settings, "SECRET_KEY", "")
+    monkeypatch.setattr(config.settings, "DATABASE_URL", f"sqlite:///{(tmp_path / 'tracker.db').as_posix()}")
+    key = config.secret_key()
+    assert (tmp_path / ".secret_key").read_text(encoding="utf-8").strip() == key
+    assert config.secret_key() == key

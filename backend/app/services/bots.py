@@ -46,6 +46,19 @@ def mcp_token(db: Session) -> str:
     return tok
 
 
+def google_sign_in_block(meeting_link: str) -> Optional[Dict[str, Any]]:
+    """MeetStream's signed-in join for Google Meet links, when a bot domain is set."""
+    domain = settings.GOOGLE_BOT_LOGIN_DOMAIN.strip()
+    if not domain or "meet.google.com" not in (meeting_link or "").lower():
+        return None
+    block: Dict[str, Any] = {"login_required": True, "google_login_domain": domain}
+    email = settings.GOOGLE_BOT_SIGN_IN_EMAIL.strip()
+    if email:
+        block["sign_in_email"] = email
+        block["strict_email"] = settings.GOOGLE_BOT_STRICT_EMAIL
+    return block
+
+
 def build_payload(db: Session, meeting: Meeting, join_at: Optional[datetime]) -> Dict[str, Any]:
     payload: Dict[str, Any] = {
         "meeting_link": meeting.meeting_link,
@@ -58,6 +71,7 @@ def build_payload(db: Session, meeting: Meeting, join_at: Optional[datetime]) ->
         "automatic_leave": {
             "waiting_room_timeout": settings.WAITING_ROOM_TIMEOUT,
             "everyone_left_timeout": settings.EVERYONE_LEFT_TIMEOUT,
+            "no_one_joined_timeout": min(1800, max(60, settings.NO_ONE_JOINED_TIMEOUT)),
             "in_call_recording_timeout": max(600, settings.IN_CALL_RECORDING_TIMEOUT),
             "recording_permission_denied_timeout": 60,
         },
@@ -69,6 +83,10 @@ def build_payload(db: Session, meeting: Meeting, join_at: Optional[datetime]) ->
         # the bot leaves when everyone else has left, or after a long silence.
         payload["automatic_leave"]["voice_inactivity_timeout"] = settings.STANDUP_SILENCE_LEAVE_SECONDS
         payload["automatic_leave"]["everyone_left_timeout"] = min(settings.EVERYONE_LEFT_TIMEOUT, 60)
+    signed_in = google_sign_in_block(meeting.meeting_link)
+    if signed_in:
+        # The bot's name and photo then come from its Google account.
+        payload["google_meet"] = signed_in
     if join_at:
         payload["join_at"] = join_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     if settings.public_url:
