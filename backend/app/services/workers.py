@@ -24,6 +24,7 @@ from app.services.meetstream import (
     IN_CALL_STATES,
     MeetStreamError,
     NotReady,
+    STOP_REASONS,
     map_remote_status,
     meetstream,
 )
@@ -62,7 +63,10 @@ async def apply_status(meeting_id: str, new_status: str, reason: str | None = No
         meeting.bot_status = new_status
         if new_status in FINISHED_STATES:
             meeting.ended_at = meeting.ended_at or now
-            if reason:
+            # MeetStream's generic "left normally" arrives after the app has saved
+            # why the bot left (the stand-up agent closed it, someone removed it),
+            # so it must not replace that.
+            if reason and not (meeting.stop_reason and reason == STOP_REASONS["bot.stopped"][1]):
                 meeting.stop_reason = reason
             if new_status in ("not_admitted", "denied", "failed"):
                 meeting.processing_status = "skipped"

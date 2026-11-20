@@ -549,3 +549,23 @@ def test_guest_host_asks_who_joined_first_then_the_rest(client, db, people, monk
         time.sleep(0.05)
     assert r.startswith(f"Joined since you arrived: {first}.")
     assert "Then ask the rest of the expected people: " + ", ".join(team[:-1]) + "." in r
+
+
+def test_generic_left_normally_keeps_the_agents_reason(db):
+    """MeetStream's end event arrives after the agent's leave: it must not
+    replace the saved reason with the generic one."""
+    import asyncio
+    from app.services import workers
+    from app.services.meetstream import STOP_REASONS
+
+    generic = STOP_REASONS["bot.stopped"][1]
+    closed = Meeting(title="a", mode="standup", bot_id="b1", bot_status="in_meeting",
+                     stop_reason="The stand-up agent closed the meeting (stand-up finished).")
+    plain = Meeting(title="b", mode="standup", bot_id="b2", bot_status="in_meeting")
+    db.add_all([closed, plain])
+    db.commit()
+    asyncio.run(workers.apply_status(closed.id, "ended", generic))
+    asyncio.run(workers.apply_status(plain.id, "ended", generic))
+    db.expire_all()
+    assert db.get(Meeting, closed.id).stop_reason.startswith("The stand-up agent closed")
+    assert db.get(Meeting, plain.id).stop_reason == generic
