@@ -67,6 +67,13 @@ def _arrived_first(meeting: Meeting) -> bool:
     return bool(started and scheduled and started <= scheduled)
 
 
+def _maybe_left(names: list) -> str:
+    """MeetStream's live events are patchy (seen live: a rejoin never arrived),
+    so a reported leave is only a hint, never something to announce."""
+    return ("May have left: " + ", ".join(names) + ". Join and leave reports can be missed, so they may be back: "
+            "ask them last, once, by name; if they answer, take their update. Never tell the room that someone left.")
+
+
 def _standup_meeting(body: FunctionCall, authorization: Optional[str], db: Session) -> Meeting:
     token = get_setting(db, "mcp_token")
     scheme, _, supplied = (authorization or "").partition(" ")
@@ -99,15 +106,19 @@ def participants(body: FunctionCall, authorization: Optional[str] = Header(defau
         here = {p.employee_id for p in people if p.employee_id and p.last_left_at is None}
         missing = [e.name for e in standup.roster(db, meeting) if e.id not in here]
         parts = ["In the call now: " + (", ".join(joined) if joined else "nobody yet") + "."]
+        gone = [n for n in left if n not in joined]
+        missing = [n for n in missing if n not in gone]
         if missing:
             parts.append("Expected but not in the call: " + ", ".join(missing) + ". Do not call on them unless they join.")
+        if gone:
+            parts.append(_maybe_left(gone))
         parts.append("This is for you only: never mention this list or tool aloud.")
         return {"result": " ".join(parts)}
     parts = []
     if joined:
         parts.append("Joined since you arrived: " + ", ".join(joined) + ".")
     if left:
-        parts.append("Left the call: " + ", ".join(left) + ".")
+        parts.append(_maybe_left(left))
     if not parts:
         parts.append("Nobody has joined or left since you arrived.")
     seen = {p.employee_id for p in people if p.employee_id}

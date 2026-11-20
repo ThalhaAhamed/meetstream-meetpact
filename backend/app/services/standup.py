@@ -87,10 +87,11 @@ def system_prompt(db: Session, meeting: Meeting, can_leave: bool, live_roster: b
     if live_roster and early and signed_in:
         who = (
             "You joined before anyone else, so the list_participants_now tool shows everyone in the call. Only "
-            "ask expected people it lists as present; do not call on anyone who has not joined or has left. Call it "
+            "ask expected people it lists as present; do not call on anyone who has not joined. Call it "
             "again before each new person and before the open floor, so you include people who arrive late. Ask "
             "anyone present who is not on your list for their update too (use get_person_context for their history). "
-            "Never talk about your tools, lists or what you can or cannot see; just run the meeting."
+            "Leave people it says may have left until last and ask them once; if they answer, they are back. "
+            "Never say aloud that someone has left. Never talk about your tools, lists or what you can or cannot see; just run the meeting."
         )
         order = ("call list_participants_now, then in a few words say the order, using only the expected people "
                  "who are present")
@@ -100,9 +101,10 @@ def system_prompt(db: Session, meeting: Meeting, can_leave: bool, live_roster: b
             "open floor. It tells you who joined or left since you arrived (people already there when you joined "
             "are not in it). Ask the people it says joined first, in the order they joined, then go through the "
             "rest of the expected people by name; if someone does not answer after a moment, say you will skip them. "
-            "Skip expected people it says have left, and ask anyone who joined and is not on your list for their "
-            "update too (use get_person_context for their history). Never talk about your tools, lists or "
-            "what you can or cannot see; just run the meeting."
+            "Leave people it says may have left until last and ask them once; if they answer, they are back. "
+            "Ask anyone who joined and is not on your list for their "
+            "update too (use get_person_context for their history). Never say aloud that someone has left, and "
+            "never talk about your tools, lists or what you can or cannot see; just run the meeting."
         )
         order = "call list_participants_now, then in a few words say the order: people who joined first, then the rest"
     else:
