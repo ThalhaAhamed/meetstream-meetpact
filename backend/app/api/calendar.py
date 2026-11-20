@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from urllib.parse import urlencode
 
 import httpx
@@ -16,7 +17,7 @@ from app.api import serializers as S
 from app.auth import current_user, require_admin, require_manager
 from app.config import secret_key, settings
 from app.db import get_db
-from app.models import Meeting, User
+from app.models import Meeting, Team, User
 from app.services import bots, calendar_sync
 from app.services.app_settings import get_setting, set_settings
 from app.services.meetstream import MeetStreamError, meetstream
@@ -187,6 +188,7 @@ async def events(hours: int = 72, db: Session = Depends(get_db), _: User = Depen
 
 class JoinBody(BaseModel):
     mode: str = "notetaker"
+    team_id: Optional[str] = None  # a stand-up host expects this team
 
 
 @router.post("/events/{event_id}/join")
@@ -201,6 +203,8 @@ async def join_event(event_id: str, body: JoinBody, db: Session = Depends(get_db
         raise HTTPException(404, "That event is not in the next two weeks or has no meeting link.")
     m = calendar_sync.meeting_for_event(db, ev, mode=body.mode)
     m.organizer_user_id = m.organizer_user_id or user.id
+    if body.team_id and not m.bot_id and db.get(Team, body.team_id):
+        m.team_id = body.team_id
     db.commit()
     now = datetime.now(timezone.utc)
     try:

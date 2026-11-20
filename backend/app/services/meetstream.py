@@ -194,7 +194,16 @@ class MeetStreamClient:
             nxt = body.get("next")
             if not body.get("has_more") or not nxt:
                 break
-            path = nxt.split("/api/v1", 1)[-1] if "/api/v1" in nxt else nxt
+            if "/api/v1" in nxt:
+                path = nxt.split("/api/v1", 1)[-1]
+            elif nxt.startswith("/"):
+                path = nxt
+            else:
+                # Seen live: `next` is a bare cursor token, not a link. Requesting
+                # it as a path 404s and lost every event, so keep the first page
+                # (soonest events first) rather than guess the cursor parameter.
+                log.info("Calendar events: stopping at an opaque next cursor after %d events", len(events))
+                break
         return events
 
     async def disconnect_calendar(self) -> Dict[str, Any]:
