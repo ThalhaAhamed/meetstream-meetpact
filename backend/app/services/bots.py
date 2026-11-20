@@ -59,6 +59,16 @@ def google_sign_in_block(meeting_link: str) -> Optional[Dict[str, Any]]:
     return block
 
 
+def join_time(starts_at: Optional[datetime], now: Optional[datetime] = None) -> Optional[datetime]:
+    """When to send the bot for a meeting that starts at ``starts_at``:
+    EARLY_JOIN_MINUTES before it. None means join now."""
+    if not starts_at:
+        return None
+    now = now or datetime.now(timezone.utc)
+    when = starts_at - timedelta(minutes=max(0, settings.EARLY_JOIN_MINUTES))
+    return when if when > now + timedelta(seconds=60) else None
+
+
 def build_payload(db: Session, meeting: Meeting, join_at: Optional[datetime]) -> Dict[str, Any]:
     payload: Dict[str, Any] = {
         "meeting_link": meeting.meeting_link,
@@ -81,7 +91,9 @@ def build_payload(db: Session, meeting: Meeting, join_at: Optional[datetime]) ->
     if meeting.mode == "standup":
         # The agent closes the meeting itself; if it cannot call the leave tool,
         # the bot leaves when everyone else has left, or after a long silence.
-        payload["automatic_leave"]["voice_inactivity_timeout"] = settings.STANDUP_SILENCE_LEAVE_SECONDS
+        # An early bot sits in a quiet room until the start time, so allow for that.
+        early = max(0, settings.EARLY_JOIN_MINUTES) * 60 if join_at else 0
+        payload["automatic_leave"]["voice_inactivity_timeout"] = settings.STANDUP_SILENCE_LEAVE_SECONDS + early
         payload["automatic_leave"]["everyone_left_timeout"] = min(settings.EVERYONE_LEFT_TIMEOUT, 60)
     signed_in = google_sign_in_block(meeting.meeting_link)
     if signed_in:
@@ -98,15 +110,19 @@ def build_payload(db: Session, meeting: Meeting, join_at: Optional[datetime]) ->
 
 
 async def launch(db: Session, meeting: Meeting, join_at: Optional[datetime] = None) -> Meeting:
-    """Create the MeetStream bot for a meeting. Raises MeetStreamError."""
+    """Create the MeetStream bot for a meeting. ``join_at`` is when the meeting
+    starts (None: it has started); the bot is booked EARLY_JOIN_MINUTES before
+    that. Raises MeetStreamError."""
     if meeting.bot_id:
         return meeting
+    early = bool(join_at and join_at > datetime.now(timezone.utc) + timedelta(seconds=30))
+    join_at = join_time(join_at)
     payload = build_payload(db, meeting, join_at)
     if meeting.mode == "standup":
         from app.services.processing import refresh_team_board
 
         await refresh_team_board(db, meeting)  # the host should know the board as it is now
-        agent = await meetstream.create_mia_agent(standup.agent_payload(db, meeting, mcp_token(db)))
+        agent = await meetstream.create_mia_agent(standup.agent_payload(db, meeting, mcp_token(db), early=early))
         agent_id = agent.get("agent_config_id") or agent.get("id")
         if not agent_id:
             raise MeetStreamError("MeetStream did not return an agent_config_id for the stand-up agent.")

@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import hmac
 import logging
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException
@@ -17,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db, session_scope
 from app.models import Meeting
+from app.services import standup
 from app.services.app_settings import get_setting
 from app.services.meetstream import NotReady, LIVE_STATES, MeetStreamError, meetstream
 
@@ -49,6 +51,17 @@ async def _leave_later(meeting_id: str, bot_id: str, reason: str) -> None:
             m.stop_reason = f"The stand-up agent closed the meeting ({reason})."
 
 
+def _aware(dt: Optional[datetime]) -> Optional[datetime]:
+    return dt.replace(tzinfo=timezone.utc) if dt and dt.tzinfo is None else dt
+
+
+def _arrived_first(meeting: Meeting) -> bool:
+    """The bot was in the call by the start time (it joins early), so MeetStream
+    sent a join event for everyone who came after it."""
+    started, scheduled = _aware(meeting.started_at), _aware(meeting.scheduled_at)
+    return bool(started and scheduled and started <= scheduled)
+
+
 def _standup_meeting(body: FunctionCall, authorization: Optional[str], db: Session) -> Meeting:
     token = get_setting(db, "mcp_token")
     scheme, _, supplied = (authorization or "").partition(" ")
@@ -75,6 +88,15 @@ def participants(body: FunctionCall, authorization: Optional[str] = Header(defau
     name = lambda p: p.employee.name if p.employee else p.display_name
     joined = [name(p) for p in people if p.last_left_at is None]
     left = [name(p) for p in people if p.last_left_at is not None]
+    if _arrived_first(meeting):
+        # The bot was in before the start time, so every join was seen.
+        here = {p.employee_id for p in people if p.employee_id and p.last_left_at is None}
+        missing = [e.name for e in standup.roster(db, meeting) if e.id not in here]
+        parts = ["In the call now: " + (", ".join(joined) if joined else "nobody yet") + "."]
+        if missing:
+            parts.append("Expected but not in the call: " + ", ".join(missing) + ". Do not call on them unless they join.")
+        parts.append("This is for you only: never mention this list or tool aloud.")
+        return {"result": " ".join(parts)}
     parts = []
     if joined:
         parts.append("Joined since you arrived: " + ", ".join(joined) + ".")

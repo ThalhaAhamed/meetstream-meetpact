@@ -449,3 +449,60 @@ def test_bot_payload_no_one_joined_timeout_and_signed_in_google(db, monkeypatch)
     assert bots.build_payload(db, meet, None)["google_meet"] == {
         "login_required": True, "google_login_domain": "bots.example.com",
         "sign_in_email": "notetaker@bots.example.com", "strict_email": False}
+
+
+def test_scheduled_bot_joins_two_minutes_early():
+    from datetime import datetime, timedelta, timezone
+    from app.services import bots
+
+    now = datetime(2026, 1, 5, 9, 0, tzinfo=timezone.utc)
+    assert bots.join_time(now + timedelta(minutes=10), now) == now + timedelta(minutes=8)
+    assert bots.join_time(now + timedelta(minutes=2, seconds=30), now) is None  # too close: join now
+    assert bots.join_time(None, now) is None
+
+
+def test_early_standup_host_waits_and_asks_only_who_is_there(client, db, people, monkeypatch):
+    """An early host greets an empty room, waits to be spoken to, and its
+    participants tool lists everyone present and who is still missing."""
+    from datetime import datetime, timedelta, timezone
+    import time
+    from app.config import settings
+    from app.services import standup
+    from app.services.app_settings import set_settings
+
+    async def send_message(self, bot_id, message):
+        return {}
+
+    monkeypatch.setattr(MeetStreamClient, "send_message", send_message)
+    monkeypatch.setattr(settings, "PUBLIC_URL", "https://x.example.com")
+    set_settings(db, {"mcp_token": "tok"})
+    start = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(minutes=1)
+    m = Meeting(title="Daily", mode="standup", team_id=people["team"].id, bot_id="bot_early",
+                bot_status="in_meeting", consent_notice_sent=True,
+                scheduled_at=start, started_at=start - timedelta(minutes=2))
+    db.add(m)
+    db.commit()
+
+    p = standup.agent_payload(db, m, "tok", early=True)
+    assert p["agent"]["first_message"] == standup.early_first_message(db)
+    prompt = p["model"]["system_prompt"]
+    assert "Stay silent until someone speaks" in prompt and "shows everyone in the call" in prompt
+    assert standup.intro_text(db) in prompt
+    late = standup.agent_payload(db, m, "tok")
+    assert late["agent"]["first_message"] == standup.intro_text(db)
+    assert "people already there when you joined are not in it" in late["model"]["system_prompt"]
+
+    team = [e.name for e in standup.roster(db, m)]
+    here = team[0]
+    client.post("/api/webhooks/participants", json={
+        "event": "participant_events.join", "timestamp": "t1",
+        "data": {"data": {"action": "join", "participant": {"id": here, "name": here}}, "bot": {"id": "bot_early"}}})
+    call = {"name": "list_participants_now", "bot": {"bot_id": "bot_early"}, "args": {}}
+    for _ in range(40):
+        r = client.post("/api/agent/participants", json=call, headers={"Authorization": "Bearer tok"}).json()["result"]
+        if here in r.split("Expected")[0]:
+            break
+        time.sleep(0.05)
+    assert r.startswith(f"In the call now: {here}.")
+    assert "Expected but not in the call: " + ", ".join(team[1:]) in r
+    assert "already in the call" not in r

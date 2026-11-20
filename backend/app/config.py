@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     GOOGLE_BOT_SIGN_IN_EMAIL: str = ""  # optional: always use this bot account
     GOOGLE_BOT_STRICT_EMAIL: bool = True  # fail rather than use another account if that one is busy
     SCHEDULE_LEAD_MINUTES: int = 10  # create join_at bots this long before start
+    # Scheduled bots join this many minutes before the meeting starts. MeetStream
+    # only sends join events for people who arrive after the bot, so an early bot
+    # sees everyone come in and the stand-up host asks only the people present.
+    EARLY_JOIN_MINUTES: int = 2
     # Without PUBLIC_URL (no leave tool) a stand-up bot leaves 60 s after everyone
     # else has left; this silence timeout is only a safety net. MeetStream counts
     # silence from the participants only - the agent's own speech does not reset

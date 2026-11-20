@@ -67,7 +67,14 @@ def intro_text(db: Session) -> str:
     return text or f"Hi everyone, I'm {get_setting(db, 'bot_name')}. Let's get started."
 
 
-def system_prompt(db: Session, meeting: Meeting, can_leave: bool, live_roster: bool = False) -> str:
+def early_first_message(db: Session) -> str:
+    """First words when the host arrives before the start time, to a room
+    that may still be empty: the real introduction comes once people speak."""
+    return f"Hi, I'm {get_setting(db, 'bot_name')}. I'll start the stand-up once people are here, just say hello when you're ready."
+
+
+def system_prompt(db: Session, meeting: Meeting, can_leave: bool, live_roster: bool = False,
+                  early: bool = False) -> str:
     people = [person_context(db, e, meeting) for e in roster(db, meeting)]
     names = ", ".join(p["name"] for p in people) or "whoever is present"
     leave = (
@@ -75,24 +82,44 @@ def system_prompt(db: Session, meeting: Meeting, can_leave: bool, live_roster: b
         if can_leave else
         "Then stay completely silent: you will leave the call automatically once everyone has left."
     )
-    who = (
-        "Call the list_participants_now tool at the start of the round and again before the open floor. "
-        "It tells you who joined or left since you arrived (people already there when you joined are not in it). "
-        "Skip expected people it says have left, and ask anyone who joined and is not on your list for their "
-        "update too (use get_person_context for their history). Never talk about your tools, lists or "
-        "what you can or cannot see; just run the meeting."
-        if live_roster else
-        "You cannot see who is in the call. If someone does not answer after a moment, say you will skip them. "
-        "If someone not on the list speaks up, include them."
-    )
-    consent = ("Your first message already introduced you and told people you will ask each of them what they "
-               "worked on, their updates and their status. Do not repeat that introduction, and do not ask about "
-               "recording or consent: the organizer has told people the meeting is recorded.")
+    if live_roster and early:
+        who = (
+            "You joined before anyone else, so the list_participants_now tool shows everyone in the call. Only "
+            "ask expected people it lists as present; do not call on anyone who has not joined or has left. Call it "
+            "again before each new person and before the open floor, so you include people who arrive late. Ask "
+            "anyone present who is not on your list for their update too (use get_person_context for their history). "
+            "Never talk about your tools, lists or what you can or cannot see; just run the meeting."
+        )
+        order = ("call list_participants_now, then in a few words say the order, using only the expected people "
+                 "who are present")
+    elif live_roster:
+        who = (
+            "Call the list_participants_now tool at the start of the round and again before the open floor. "
+            "It tells you who joined or left since you arrived (people already there when you joined are not in it). "
+            "Skip expected people it says have left, and ask anyone who joined and is not on your list for their "
+            "update too (use get_person_context for their history). Never talk about your tools, lists or "
+            "what you can or cannot see; just run the meeting."
+        )
+        order = f"in a few words say the order ({names})"
+    else:
+        who = ("You cannot see who is in the call. If someone does not answer after a moment, say you will skip them. "
+               "If someone not on the list speaks up, include them.")
+        order = f"in a few words say the order ({names})"
+    no_consent = "Please do not ask about recording or consent: the organizer has told people the meeting is recorded."
+    if early:
+        opening = (f"You arrived a couple of minutes before the start and your first message told people to say "
+                   f"hello when they are ready. Stay silent until someone speaks to you. If they ask you to wait for "
+                   f"others, wait until someone tells you to start. Then say: \"{intro_text(db)}\" and {order}, "
+                   f"then start with the first person straight away. {no_consent}")
+    else:
+        opening = ("Your first message already introduced you and told people you will ask each of them what they "
+                   "worked on, their updates and their status. Do not repeat that introduction. "
+                   f"{no_consent} {order[0].upper() + order[1:]}, then start with the first person straight away.")
     return f"""You are {get_setting(db, 'bot_name')}, an AI stand-up facilitator running a live team meeting from start to finish. You speak out loud, so keep every turn short and natural (one or two sentences). You lead and keep a brisk pace: people should never have to tell you what comes next or ask whether you are still there.
 
 Run the meeting in these phases, in order, exactly once each:
 
-1. OPENING. {consent} In a few words say the order ({names}), then start with the first person straight away.
+1. OPENING. {opening}
 
 2. ROUND. Go through the people ONE AT A TIME, by name. For each person ask, conversationally:
    - what they completed since the last update,
@@ -158,7 +185,8 @@ def leave_function(mcp_token: str) -> Dict[str, Any]:
     }
 
 
-def agent_payload(db: Session, meeting: Meeting, mcp_token: str | None) -> Dict[str, Any]:
+def agent_payload(db: Session, meeting: Meeting, mcp_token: str | None, early: bool = False) -> Dict[str, Any]:
+    """``early``: the bot is booked to join before the meeting starts."""
     mcp_servers, functions = [], []
     if settings.public_url and mcp_token:
         mcp_servers.append({
@@ -171,12 +199,13 @@ def agent_payload(db: Session, meeting: Meeting, mcp_token: str | None) -> Dict[
         })
         functions.append(participants_function(mcp_token))
         functions.append(leave_function(mcp_token))
-    first = intro_text(db)
+    first = early_first_message(db) if early else intro_text(db)
     from app.services import voices
 
+    prompt = system_prompt(db, meeting, can_leave=bool(functions), live_roster=bool(mcp_servers), early=early)
     payload: Dict[str, Any] = {
         "agent_name": f"Standup: {meeting.title}"[:60],
-        **voices.model_block(db, system_prompt(db, meeting, can_leave=bool(functions), live_roster=bool(mcp_servers))),
+        **voices.model_block(db, prompt),
         "agent": {
             # "action" lets the agent call tools (MCP servers and custom functions).
             "response_type": "action" if (mcp_servers or functions) else "voice",

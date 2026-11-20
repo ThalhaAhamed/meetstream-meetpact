@@ -204,7 +204,7 @@ async def join_event(event_id: str, body: JoinBody, db: Session = Depends(get_db
     db.commit()
     now = datetime.now(timezone.utc)
     try:
-        await bots.launch(db, m, join_at=ev["start"] if ev["start"] > now + timedelta(seconds=90) else None)
+        await bots.launch(db, m, join_at=ev["start"] if ev["start"] > now else None)
     except MeetStreamError as exc:
         m.bot_status, m.processing_status, m.stop_reason = "failed", "skipped", str(exc)
         db.commit()

@@ -120,8 +120,7 @@ async def sweep(db: Session) -> int:
         m = meeting_for_event(db, ev)
         db.commit()
         try:
-            join_at = ev["start"] if ev["start"] > now + timedelta(seconds=90) else None
-            await bots.launch(db, m, join_at=join_at)
+            await bots.launch(db, m, join_at=ev["start"] if ev["start"] > now else None)
             booked += 1
         except Exception as exc:
             db.rollback()

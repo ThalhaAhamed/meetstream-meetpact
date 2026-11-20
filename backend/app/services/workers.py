@@ -87,7 +87,7 @@ async def _watch_one(meeting_id: str) -> None:
         bot_id = meeting.bot_id
         status = meeting.bot_status
         scheduled_at = _aware(meeting.scheduled_at)
-    if status == "scheduled" and scheduled_at and scheduled_at > datetime.now(timezone.utc) + timedelta(minutes=1):
+    if status == "scheduled" and scheduled_at and scheduled_at > datetime.now(timezone.utc) + timedelta(minutes=1 + settings.EARLY_JOIN_MINUTES):
         return
     try:
         remote = await meetstream.status(bot_id)
@@ -197,7 +197,7 @@ async def schedule_sweep() -> None:
         with session_scope() as db:
             m = db.get(Meeting, mid)
             try:
-                await bots.launch(db, m, join_at=t if t > datetime.now(timezone.utc) + timedelta(seconds=90) else None)
+                await bots.launch(db, m, join_at=t if t > datetime.now(timezone.utc) else None)
             except Exception as exc:  # one failed launch must not strand the rest
                 if not isinstance(exc, MeetStreamError):
                     log.exception("Unexpected error launching %s", mid)
