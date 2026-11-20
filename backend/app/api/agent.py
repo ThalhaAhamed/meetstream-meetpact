@@ -23,8 +23,9 @@ from app.services.meetstream import NotReady, LIVE_STATES, MeetStreamError, meet
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/agent", tags=["agent"])
 
-# Give the goodbye time to finish playing before the bot drops out.
-LEAVE_DELAY_SECONDS = 6
+# The agent often calls the leave tool as it starts its recap, not after the
+# goodbye, so give the closing words time to finish playing before it drops out.
+LEAVE_DELAY_SECONDS = 20
 
 
 class FunctionCall(BaseModel):
