@@ -122,7 +122,8 @@ async def launch(db: Session, meeting: Meeting, join_at: Optional[datetime] = No
         from app.services.processing import refresh_team_board
 
         await refresh_team_board(db, meeting)  # the host should know the board as it is now
-        agent = await meetstream.create_mia_agent(standup.agent_payload(db, meeting, mcp_token(db), early=early))
+        agent = await meetstream.create_mia_agent(standup.agent_payload(
+            db, meeting, mcp_token(db), early=early, signed_in=bool(google_sign_in_block(meeting.meeting_link))))
         agent_id = agent.get("agent_config_id") or agent.get("id")
         if not agent_id:
             raise MeetStreamError("MeetStream did not return an agent_config_id for the stand-up agent.")

@@ -58,7 +58,7 @@ who is in the call and leave when it is done. You have three options:
 | `GOOGLE_BOT_STRICT_EMAIL` | `true` | With `GOOGLE_BOT_SIGN_IN_EMAIL`: fail if that account is busy, rather than use another one from the domain. |
 | `IN_CALL_RECORDING_TIMEOUT` | `14400` | Maximum recording length (MeetStream minimum: 600). |
 | `SCHEDULE_LEAD_MINUTES` | `10` | How far ahead scheduled meetings are booked with MeetStream (`join_at`). |
-| `EARLY_JOIN_MINUTES` | `2` | Scheduled and calendar bots join this many minutes before the start time. MeetStream only reports people who join after the bot, so an early stand-up host sees everyone arrive and asks only the people present. `0` joins on time. |
+| `EARLY_JOIN_MINUTES` | `2` | Scheduled and calendar bots join this many minutes before the start time. MeetStream only reports people who join after the bot. A [signed-in bot](#signed-in-google-meet-bot) gets in first, so the stand-up host asks only the people present. A guest bot has to be let in by someone already there, so the host asks the people it saw join, in that order, then the rest of the team. `0` joins on time. |
 | `MEETSTREAM_WEBHOOK_SECRET` | - | Verifies signed workspace webhooks. |
 
 ### Signed-in Google Meet bot

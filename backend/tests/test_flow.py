@@ -462,8 +462,8 @@ def test_scheduled_bot_joins_two_minutes_early():
 
 
 def test_early_standup_host_waits_and_asks_only_who_is_there(client, db, people, monkeypatch):
-    """An early host greets an empty room, waits to be spoken to, and its
-    participants tool lists everyone present and who is still missing."""
+    """An early signed-in host greets an empty room, waits to be spoken to, and
+    its participants tool lists everyone present and who is still missing."""
     from datetime import datetime, timedelta, timezone
     import time
     from app.config import settings
@@ -475,15 +475,17 @@ def test_early_standup_host_waits_and_asks_only_who_is_there(client, db, people,
 
     monkeypatch.setattr(MeetStreamClient, "send_message", send_message)
     monkeypatch.setattr(settings, "PUBLIC_URL", "https://x.example.com")
+    monkeypatch.setattr(settings, "GOOGLE_BOT_LOGIN_DOMAIN", "bots.example.com")
     set_settings(db, {"mcp_token": "tok"})
     start = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(minutes=1)
     m = Meeting(title="Daily", mode="standup", team_id=people["team"].id, bot_id="bot_early",
+                meeting_link="https://meet.google.com/abc-defg-hij",
                 bot_status="in_meeting", consent_notice_sent=True,
                 scheduled_at=start, started_at=start - timedelta(minutes=2))
     db.add(m)
     db.commit()
 
-    p = standup.agent_payload(db, m, "tok", early=True)
+    p = standup.agent_payload(db, m, "tok", early=True, signed_in=True)
     assert p["agent"]["first_message"] == standup.early_first_message(db)
     prompt = p["model"]["system_prompt"]
     assert "Stay silent until someone speaks" in prompt and "shows everyone in the call" in prompt
@@ -506,3 +508,44 @@ def test_early_standup_host_waits_and_asks_only_who_is_there(client, db, people,
     assert r.startswith(f"In the call now: {here}.")
     assert "Expected but not in the call: " + ", ".join(team[1:]) in r
     assert "already in the call" not in r
+
+
+def test_guest_host_asks_who_joined_first_then_the_rest(client, db, people, monkeypatch):
+    """A guest bot knocks, so whoever let it in is never reported: the host asks
+    the people it saw join, in join order, then the rest of the team."""
+    from datetime import datetime, timedelta, timezone
+    import time
+    from app.config import settings
+    from app.services import standup
+    from app.services.app_settings import set_settings
+
+    async def send_message(self, bot_id, message):
+        return {}
+
+    monkeypatch.setattr(MeetStreamClient, "send_message", send_message)
+    monkeypatch.setattr(settings, "PUBLIC_URL", "https://x.example.com")
+    monkeypatch.setattr(settings, "GOOGLE_BOT_LOGIN_DOMAIN", "")
+    set_settings(db, {"mcp_token": "tok"})
+    start = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(minutes=1)
+    m = Meeting(title="Daily", mode="standup", team_id=people["team"].id, bot_id="bot_guest",
+                meeting_link="https://meet.google.com/abc-defg-hij", bot_status="in_meeting",
+                consent_notice_sent=True, scheduled_at=start, started_at=start - timedelta(minutes=2))
+    db.add(m)
+    db.commit()
+    prompt = standup.agent_payload(db, m, "tok", early=True)["model"]["system_prompt"]
+    assert "in the order they joined, then go through the rest" in prompt
+    assert "shows everyone in the call" not in prompt
+
+    team = [e.name for e in standup.roster(db, m)]
+    first = team[-1]
+    client.post("/api/webhooks/participants", json={
+        "event": "participant_events.join", "timestamp": "t1",
+        "data": {"data": {"action": "join", "participant": {"id": first, "name": first}}, "bot": {"id": "bot_guest"}}})
+    call = {"name": "list_participants_now", "bot": {"bot_id": "bot_guest"}, "args": {}}
+    for _ in range(40):
+        r = client.post("/api/agent/participants", json=call, headers={"Authorization": "Bearer tok"}).json()["result"]
+        if first in r:
+            break
+        time.sleep(0.05)
+    assert r.startswith(f"Joined since you arrived: {first}.")
+    assert "Then ask the rest of the expected people: " + ", ".join(team[:-1]) + "." in r

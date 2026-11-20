@@ -56,8 +56,13 @@ def _aware(dt: Optional[datetime]) -> Optional[datetime]:
 
 
 def _arrived_first(meeting: Meeting) -> bool:
-    """The bot was in the call by the start time (it joins early), so MeetStream
-    sent a join event for everyone who came after it."""
+    """A signed-in bot was in the call by the start time (it joins early), so
+    MeetStream sent a join event for everyone who came after it. A guest bot
+    knocks, so whoever let it in was already there and is never reported."""
+    from app.services.bots import google_sign_in_block
+
+    if not google_sign_in_block(meeting.meeting_link):
+        return False
     started, scheduled = _aware(meeting.started_at), _aware(meeting.scheduled_at)
     return bool(started and scheduled and started <= scheduled)
 
@@ -80,9 +85,10 @@ def _standup_meeting(body: FunctionCall, authorization: Optional[str], db: Sessi
 @router.post("/participants")
 def participants(body: FunctionCall, authorization: Optional[str] = Header(default=None), db: Session = Depends(get_db)):
     """Who has come and gone since the agent joined, from participant_events
-    webhooks. MeetStream sends no join event for people who were already in
-    the call when the bot arrived, so the answer says so and the agent keeps
-    calling on the expected team by name."""
+    webhooks. A signed-in bot that got there first sees everyone, so the agent
+    asks only them. Otherwise people already in the call when the bot arrived
+    are never reported, so the agent asks those it saw join (in join order)
+    and then the rest of the expected team."""
     meeting = _standup_meeting(body, authorization, db)
     people = [p for p in meeting.participants if not p.is_bot]
     name = lambda p: p.employee.name if p.employee else p.display_name
@@ -104,8 +110,13 @@ def participants(body: FunctionCall, authorization: Optional[str] = Header(defau
         parts.append("Left the call: " + ", ".join(left) + ".")
     if not parts:
         parts.append("Nobody has joined or left since you arrived.")
-    parts.append("People who were already in the call when you joined are not listed, so keep going through "
-                 "the expected people by name. This is for you only: never mention this list or tool aloud.")
+    seen = {p.employee_id for p in people if p.employee_id}
+    rest = [e.name for e in standup.roster(db, meeting) if e.id not in seen]
+    if rest:
+        parts.append("Then ask the rest of the expected people: " + ", ".join(rest) + ".")
+    parts.append("People who were already in the call when you joined are not listed, so ask the people who "
+                 "joined first, in that order, then go through the rest by name and skip anyone who does not "
+                 "answer. This is for you only: never mention this list or tool aloud.")
     return {"result": " ".join(parts)}
 
 

@@ -74,7 +74,9 @@ def early_first_message(db: Session) -> str:
 
 
 def system_prompt(db: Session, meeting: Meeting, can_leave: bool, live_roster: bool = False,
-                  early: bool = False) -> str:
+                  early: bool = False, signed_in: bool = False) -> str:
+    """``signed_in``: the bot joins without knocking, so when it is also early it
+    is in the call before everyone and sees each person arrive."""
     people = [person_context(db, e, meeting) for e in roster(db, meeting)]
     names = ", ".join(p["name"] for p in people) or "whoever is present"
     leave = (
@@ -82,7 +84,7 @@ def system_prompt(db: Session, meeting: Meeting, can_leave: bool, live_roster: b
         if can_leave else
         "Then stay completely silent: you will leave the call automatically once everyone has left."
     )
-    if live_roster and early:
+    if live_roster and early and signed_in:
         who = (
             "You joined before anyone else, so the list_participants_now tool shows everyone in the call. Only "
             "ask expected people it lists as present; do not call on anyone who has not joined or has left. Call it "
@@ -94,13 +96,15 @@ def system_prompt(db: Session, meeting: Meeting, can_leave: bool, live_roster: b
                  "who are present")
     elif live_roster:
         who = (
-            "Call the list_participants_now tool at the start of the round and again before the open floor. "
-            "It tells you who joined or left since you arrived (people already there when you joined are not in it). "
+            "Call the list_participants_now tool at the start of the round, before each new person and before the "
+            "open floor. It tells you who joined or left since you arrived (people already there when you joined "
+            "are not in it). Ask the people it says joined first, in the order they joined, then go through the "
+            "rest of the expected people by name; if someone does not answer after a moment, say you will skip them. "
             "Skip expected people it says have left, and ask anyone who joined and is not on your list for their "
             "update too (use get_person_context for their history). Never talk about your tools, lists or "
             "what you can or cannot see; just run the meeting."
         )
-        order = f"in a few words say the order ({names})"
+        order = "call list_participants_now, then in a few words say the order: people who joined first, then the rest"
     else:
         who = ("You cannot see who is in the call. If someone does not answer after a moment, say you will skip them. "
                "If someone not on the list speaks up, include them.")
@@ -185,8 +189,10 @@ def leave_function(mcp_token: str) -> Dict[str, Any]:
     }
 
 
-def agent_payload(db: Session, meeting: Meeting, mcp_token: str | None, early: bool = False) -> Dict[str, Any]:
-    """``early``: the bot is booked to join before the meeting starts."""
+def agent_payload(db: Session, meeting: Meeting, mcp_token: str | None, early: bool = False,
+                  signed_in: bool = False) -> Dict[str, Any]:
+    """``early``: the bot is booked to join before the meeting starts.
+    ``signed_in``: it joins signed in to Google, without knocking."""
     mcp_servers, functions = [], []
     if settings.public_url and mcp_token:
         mcp_servers.append({
@@ -202,7 +208,8 @@ def agent_payload(db: Session, meeting: Meeting, mcp_token: str | None, early: b
     first = early_first_message(db) if early else intro_text(db)
     from app.services import voices
 
-    prompt = system_prompt(db, meeting, can_leave=bool(functions), live_roster=bool(mcp_servers), early=early)
+    prompt = system_prompt(db, meeting, can_leave=bool(functions), live_roster=bool(mcp_servers), early=early,
+                           signed_in=signed_in)
     payload: Dict[str, Any] = {
         "agent_name": f"Standup: {meeting.title}"[:60],
         **voices.model_block(db, prompt),
