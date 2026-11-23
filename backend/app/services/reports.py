@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
@@ -26,67 +26,110 @@ def _bullets(items: List[str]) -> str:
     return "\n".join(f"- {i}" for i in items) if items else "- _None_"
 
 
+MODE_LABELS = {"standup": "Stand-up", "notetaker": "Meeting"}
+
+
+def _clean(items: Any) -> List[str]:
+    return [str(i).strip() for i in (items or []) if str(i or "").strip()]
+
+
+def _commitment(c: Dict[str, Any]) -> str:
+    due = c.get("due_date") or c.get("due")
+    return f"{c.get('text') or ''}" + (f" (due {due})" if due else "")
+
+
+def person_sections(u: EmployeeUpdate) -> List[Tuple[str, List[str]]]:
+    """(label, items) for one person's update, empty sections left out.
+    "Still pending" lists only what isn't already done, in progress or planned,
+    so the same task doesn't appear twice."""
+    done, doing, planned = _clean(u.completed), _clean(u.in_progress), _clean(u.planned)
+    seen = {i.lower() for i in done + doing + planned}
+    sections = [
+        ("Completed", done),
+        ("In progress", doing),
+        ("Planned next", planned),
+        ("Still pending", [i for i in _clean(u.pending) if i.lower() not in seen]),
+        ("Blockers", _clean(u.blockers)),
+        ("Commitments", _clean(_commitment(c) for c in (u.commitments or []) if isinstance(c, dict))),
+    ]
+    return [(label, items) for label, items in sections if items]
+
+
+def _review_note(u: EmployeeUpdate) -> str:
+    if u.review_status == "unreviewed":
+        return ""
+    return f"Reviewed by {u.employee.name}: {u.review_status}." + (f" {u.employee_note}" if u.employee_note else "")
+
+
 def employee_section_md(u: EmployeeUpdate) -> str:
-    commitments = [
-        f"{c.get('text')}" + (f" (due {c.get('due_date')})" if c.get("due_date") else "") for c in (u.commitments or [])
-    ]
-    parts = [
-        f"### {u.employee.name}",
-        u.summary or "",
-        "**Completed**\n" + _bullets(u.completed),
-        "**In progress**\n" + _bullets(u.in_progress),
-        "**Planned next**\n" + _bullets(u.planned),
-        "**Still pending**\n" + _bullets(u.pending),
-        "**Blockers**\n" + _bullets(u.blockers),
-        "**Commitments**\n" + _bullets(commitments),
-    ]
-    if u.review_status != "unreviewed":
-        parts.append(f"_Reviewed by {u.employee.name}: {u.review_status}._ {u.employee_note or ''}")
+    parts = [f"### {u.employee.name}", u.summary or ""]
+    parts += [f"**{label}**\n" + "\n".join(f"- {i}" for i in items) for label, items in person_sections(u)]
+    note = _review_note(u)
+    if note:
+        parts.append(f"_{note}_")
     return "\n\n".join(p for p in parts if p)
 
 
-def render_meeting_report(db: Session, meeting: Meeting, visible_employee: Optional[callable] = None) -> str:
-    """Markdown report. ``visible_employee(employee_id) -> bool`` filters the
-    per-employee sections for a particular reader."""
+def action_text(a: Dict[str, str], bold_owner: bool = False) -> str:
+    owner = (f"**{a['owner']}**" if bold_owner else a["owner"]) if a["owner"] else ""
+    return a["title"] + (f" - {owner}" if owner else "") + (f" (due {a['due']})" if a["due"] else "")
+
+
+def meeting_report_data(db: Session, meeting: Meeting, visible_employee: Optional[Callable[[str], bool]] = None) -> Dict[str, Any]:
+    """Everything a meeting report shows, for one reader; the Markdown, email and
+    Slack versions are all drawn from this. ``visible_employee(employee_id) -> bool``
+    filters the per-person updates."""
     s = meeting.summary or {}
     when = meeting.started_at or meeting.scheduled_at or meeting.created_at
-    attendees = [p for p in meeting.participants if not p.is_bot]
-    att = ", ".join(
-        (p.employee.name if p.employee else p.display_name) for p in attendees
-    )
-    action_lines = []
-    for a in s.get("action_items", []):
-        line = a.get("title", "")
-        if a.get("owner_name"):
-            line += f" - **{a['owner_name']}**"
-        if a.get("due_date"):
-            line += f" (due {a['due_date']})"
-        action_lines.append(line)
-    updates = list(db.scalars(select(EmployeeUpdate).where(EmployeeUpdate.meeting_id == meeting.id)))
-    hidden = 0
-    if visible_employee is not None:
-        kept = [u for u in updates if visible_employee(u.employee_id)]
-        hidden = len(updates) - len(kept)
-        updates = kept
-    md = [
-        f"# {meeting.title}",
-        f"**Date:** {when:%Y-%m-%d %H:%M} UTC · **Type:** {meeting.mode} · **Slot:** {meeting.slot}",
-        f"**Attendees:** {att or '_unknown_'}",
-        "## Summary\n" + (s.get("overview") or "_No summary_"),
-        "## Key discussion points\n" + _bullets(s.get("key_points", [])),
-        "## Decisions\n" + _bullets(s.get("decisions", [])),
-        "## Action items\n" + _bullets(action_lines),
-        "## Open questions\n" + _bullets(s.get("open_questions", [])),
-        "## Employee updates\n" + ("\n\n".join(employee_section_md(u) for u in updates) or "_No individual updates_")
-        + (f"\n\n_{hidden} individual update(s) not shared with you._" if hidden else ""),
+    actions = [
+        {"title": a["title"].strip(), "owner": a.get("owner_name") or "", "due": a.get("due_date") or ""}
+        for a in (s.get("action_items") or []) if isinstance(a, dict) and (a.get("title") or "").strip()
     ]
+    updates = list(db.scalars(select(EmployeeUpdate).where(EmployeeUpdate.meeting_id == meeting.id)))
+    shown = [u for u in updates if visible_employee is None or visible_employee(u.employee_id)]
     stats = s.get("stats") or {}
-    if stats:
-        md.append(
-            "## Progress tracking\n"
-            f"- {stats.get('items_created', 0)} new work items, {stats.get('items_updated', 0)} updated, "
-            f"{stats.get('carried_over', 0)} carried over, {stats.get('blockers', 0)} new blockers"
-        )
+    counts = [(stats.get("items_created", 0), "new work item", "new work items"),
+              (stats.get("items_updated", 0), "updated", "updated"),
+              (stats.get("carried_over", 0), "carried over", "carried over"),
+              (stats.get("blockers", 0), "new blocker", "new blockers")]
+    mode = MODE_LABELS.get(meeting.mode, (meeting.mode or "meeting").capitalize())
+    slot = meeting.slot if meeting.slot and meeting.slot != "general" else ""
+    return {
+        "title": meeting.title,
+        "when_text": f"{when:%a %d %b %Y, %H:%M} UTC" if when else "",
+        "kind": mode + (f" · {slot}" if slot else ""),
+        "attendees": [(p.employee.name if p.employee else p.display_name) for p in meeting.participants if not p.is_bot],
+        "overview": (s.get("overview") or "").strip(),
+        "key_points": _clean(s.get("key_points")),
+        "decisions": _clean(s.get("decisions")),
+        "actions": actions,
+        "open_questions": _clean(s.get("open_questions")),
+        "updates": shown,
+        "people": [{"name": u.employee.name, "summary": (u.summary or "").strip(), "sections": person_sections(u),
+                    "review": _review_note(u)} for u in shown],
+        "hidden": len(updates) - len(shown),
+        "progress": ", ".join(f"{n} {one if n == 1 else many}" for n, one, many in counts if n),
+    }
+
+
+def render_meeting_report(db: Session, meeting: Meeting, visible_employee: Optional[Callable[[str], bool]] = None) -> str:
+    """Markdown report, shown in the app and downloadable. Empty sections are left out."""
+    d = meeting_report_data(db, meeting, visible_employee)
+    md = [f"# {d['title']}", " · ".join(x for x in (d["when_text"], d["kind"]) if x)]
+    if d["attendees"]:
+        md.append(f"**Attendees:** {', '.join(d['attendees'])}")
+    md.append("## Summary\n" + (d["overview"] or "_No summary_"))
+    for title, items in (("Key discussion points", d["key_points"]), ("Decisions", d["decisions"]),
+                         ("Action items", [action_text(a, bold_owner=True) for a in d["actions"]]),
+                         ("Open questions", d["open_questions"])):
+        if items:
+            md.append(f"## {title}\n" + "\n".join(f"- {i}" for i in items))
+    people = "\n\n".join(employee_section_md(u) for u in d["updates"])
+    if people or d["hidden"]:
+        md.append("## Updates by person" + (f"\n\n{people}" if people else "")
+                  + (f"\n\n_{d['hidden']} individual update(s) not shared with you._" if d["hidden"] else ""))
+    if d["progress"]:
+        md.append(f"## Progress tracking\n{d['progress']}")
     return "\n\n".join(md) + "\n"
 
 

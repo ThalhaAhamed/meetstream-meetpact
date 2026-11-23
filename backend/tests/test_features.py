@@ -67,7 +67,7 @@ def test_delivery_respects_sharing_and_sends_once(db, people, monkeypatch):
     monkeypatch.setattr(settings, "SMTP_HOST", "smtp.test")
     monkeypatch.setattr(settings, "SMTP_FROM", "notes@t.dev")
     monkeypatch.setattr(settings, "SLACK_WEBHOOK_URL", "https://hooks.slack.test/x")
-    monkeypatch.setattr(delivery, "_send_email", lambda to, subject, body: sent.append((to, body)))
+    monkeypatch.setattr(delivery, "_send_email", lambda to, subject, body, html=None: sent.append((to, body + (html or ""))))
 
     class FakeClient:
         def __init__(self, *a, **k): pass
@@ -233,5 +233,42 @@ def test_app_url_drives_public_address_and_links(monkeypatch):
     assert settings.public_url == "https://meetpact.example.com"
     assert delivery.report_link(m) == "https://meetpact.example.com/meetings/m1"
     assert "Open the full report" in delivery.slack_text(m)
-    assert delivery.deliverable("thal@gmail.com") and not delivery.deliverable("maya@demo.local")
+    assert delivery.deliverable("someone@gmail.com") and not delivery.deliverable("maya@demo.local")
     assert not delivery.deliverable("a@example.com") and not delivery.deliverable(None)
+
+
+def test_report_formats_are_clean_and_escaped(db, people):
+    """No empty sections or "None" placeholders; pending items already listed
+    elsewhere aren't repeated; email HTML and Slack text are escaped."""
+    from app.services import report_formats
+    from app.services.reports import meeting_report_data, render_meeting_report
+
+    e = people["emps"]
+    m = Meeting(title="Daily <sync>", mode="standup", processing_status="done",
+                started_at=datetime(2026, 11, 20, 15, 20, tzinfo=timezone.utc),
+                summary={"overview": "Shipped & reviewed.", "key_points": ["Export is live"], "decisions": [],
+                         "action_items": [{"title": "Demo", "owner_name": "Sam Okafor", "due_date": "2026-11-21"}],
+                         "open_questions": [], "stats": {"items_created": 0, "items_updated": 0}})
+    db.add(m)
+    db.flush()
+    db.add(MeetingParticipant(meeting_id=m.id, display_name="Sam Okafor", employee_id=e["sam"].id))
+    db.add(EmployeeUpdate(meeting_id=m.id, employee_id=e["sam"].id, summary="Working on Trace.",
+                          in_progress=["Build Trace"], planned=["Write the blog"],
+                          pending=["Write the blog", "Fix login"], completed=[], blockers=[], commitments=[]))
+    db.commit()
+
+    md = render_meeting_report(db, m)
+    assert "_None_" not in md and "## Decisions" not in md and "## Progress tracking" not in md
+    assert "**Completed**" not in md and md.count("Write the blog") == 1 and "Fix login" in md
+    assert "Fri 20 Nov 2026, 15:20 UTC · Stand-up" in md
+
+    d = meeting_report_data(db, m)
+    html = report_formats.email_html(d, "https://meetpact.example.com/meetings/x")
+    assert "Daily &lt;sync&gt;" in html and "Shipped &amp; reviewed." in html and "<sync>" not in html
+    assert "Open the full report" in html and "None" not in html
+    text = report_formats.email_text(d)
+    assert "**" not in text and "#" not in text and "Demo - Sam Okafor (due 2026-11-21)" in text
+
+    slack = report_formats.slack_payload(m, "https://meetpact.example.com/meetings/x")
+    assert slack["blocks"][0]["text"]["text"] == "Daily <sync>"  # plain_text header, Slack shows it literally
+    assert "Shipped &amp; reviewed." in slack["text"] and any(b["type"] == "actions" for b in slack["blocks"])
