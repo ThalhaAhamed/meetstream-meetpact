@@ -82,7 +82,7 @@ Setup is done once, on Google and MeetStream (see MeetStream's *Google signed-in
 
 Then add the bot's email to the meetings' calendar invites. Only Google Meet links are affected.
 The bot's name and photo come from its Google account, not `BOT_NAME`. If signing in fails the bot
-does not fall back to a guest join: the meeting shows *Failed*.
+does not fall back to a guest join: the meeting shows *Failed* with the reason MeetStream gave.
 
 Without a bot domain, the other way in is the meeting itself: in Google Meet's host controls, turn
 the waiting room off and set access to *Open*, where your account offers it.

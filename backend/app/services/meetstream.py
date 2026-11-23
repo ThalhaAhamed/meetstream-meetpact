@@ -7,19 +7,17 @@ meetstream-ai/labs). Behaviours worth knowing, all handled here:
 * ``202`` means "not ready yet" (transcripts, chats) - raised as NotReady.
 * ``507`` on create_bot is an idempotent replay and counts as success.
 * ``remove_bot`` is a GET.
-* ``video_required`` defaults to true on the API, so it is always sent.
+* ``video_required: false`` is always sent (older API versions defaulted to true).
 * Transcripts are keyed by transcript_id, not bot_id.
+* Calendar events page with ``?cursor=<next>``.
 """
 from __future__ import annotations
 
-import logging
 from typing import Any, Dict, List, Optional
 
 import httpx
 
 from app.config import settings
-
-log = logging.getLogger(__name__)
 
 
 class MeetStreamError(Exception):
@@ -183,27 +181,19 @@ class MeetStreamClient:
         return (body.get("calendars") if isinstance(body, dict) else body) or []
 
     async def calendar_events(self, max_pages: int = 5) -> List[Dict[str, Any]]:
-        """Upcoming synced events. The endpoint is paginated with a `next` link."""
+        """Upcoming synced events. Paginated: `next` is a cursor, sent back as
+        ?cursor=<next> while `has_more` is true (100 events a page, the maximum)."""
         events: List[Dict[str, Any]] = []
-        path: Optional[str] = "/calendar/events"
+        params: Dict[str, Any] = {"limit": 100}
         for _ in range(max_pages):
-            body = await self._request("GET", path, timeout=60.0)
+            body = await self._request("GET", "/calendar/events", params=params, timeout=60.0)
             if isinstance(body, list):
                 return events + body
             events.extend(body.get("results") or [])
             nxt = body.get("next")
             if not body.get("has_more") or not nxt:
                 break
-            if "/api/v1" in nxt:
-                path = nxt.split("/api/v1", 1)[-1]
-            elif nxt.startswith("/"):
-                path = nxt
-            else:
-                # Seen live: `next` is a bare cursor token, not a link. Requesting
-                # it as a path 404s and lost every event, so keep the first page
-                # (soonest events first) rather than guess the cursor parameter.
-                log.info("Calendar events: stopping at an opaque next cursor after %d events", len(events))
-                break
+            params = {"limit": 100, "cursor": nxt}
         return events
 
     async def disconnect_calendar(self) -> Dict[str, Any]:
@@ -259,6 +249,24 @@ STOP_REASONS = {
     "bot.denied": ("denied", "A host refused the bot or refused recording. Not retried."),
     "bot.failed": ("failed", "The bot session failed. Send a new bot."),
 }
+
+
+# bot.failed on Google Meet carries `failure_reason`; these say why in plain words.
+FAILURE_REASONS = {
+    "invalid_meeting_link": "The meeting link is not valid.",
+    "meeting_not_started": "The meeting had not started.",
+    "meeting_ended": "The meeting had already ended.",
+    "meeting_restricted": "The meeting only lets in people from the host's organisation or invite.",
+    "sign_in_required": "The meeting needs a signed-in Google account. Set up a signed-in bot.",
+    "google_sign_in_failed": "The bot could not sign in to its Google account. Check its registration with MeetStream.",
+    "cant_join_call": "Google Meet would not let the bot join.",
+    "admission_not_confirmed": "The bot asked to join but was never confirmed as admitted.",
+}
+
+
+def failure_text(event: Dict[str, Any]) -> Optional[str]:
+    reason = str(event.get("failure_reason") or "").strip().lower()
+    return FAILURE_REASONS.get(reason) if reason else None
 
 
 def stop_reason(event: Dict[str, Any]) -> str:

@@ -26,7 +26,7 @@ from app.config import settings
 from app.db import session_scope
 from app.models import Meeting, WebhookDelivery
 from app.services import consent
-from app.services.meetstream import STOP_REASONS, stop_reason
+from app.services.meetstream import STOP_REASONS, failure_text, stop_reason
 from app.services.workers import apply_status, run_processing
 
 log = logging.getLogger(__name__)
@@ -79,6 +79,8 @@ async def _handle_lifecycle(event: Dict[str, Any]) -> None:
     if event.get("event") == "bot.stopped":
         reason = stop_reason(event)
         status, text = STOP_REASONS.get(reason, ("ended", event.get("message") or "Bot stopped."))
+        if status == "failed":
+            text = failure_text(event) or text
         await apply_status(meeting_id, status, text)
     elif name in LIFECYCLE:
         await apply_status(meeting_id, LIFECYCLE[name])

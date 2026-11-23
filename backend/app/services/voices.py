@@ -107,8 +107,9 @@ async def check(db: Session) -> str:
     if not meetstream.configured:
         raise ValueError("Add the MeetStream API key first.")
     c = current(db)
-    body = {"agent_name": "MeetPact voice check", "agent": {"response_type": "voice", "first_message": "Hi"},
+    body = {"agent_name": "MeetPact voice check", "agent": {"response_modality": "audio"},
             **model_block(db, "Voice check.")}
+    body["model"]["first_message"] = "Hi"
     try:
         created = await meetstream.create_mia_agent(body)
     except MeetStreamError as exc:

@@ -199,9 +199,7 @@ def agent_payload(db: Session, meeting: Meeting, mcp_token: str | None, early: b
     if settings.public_url and mcp_token:
         mcp_servers.append({
             "url": f"{settings.public_url}/mcp",
-            "name": "MeetPact",
             "timeout": 10,
-            "active": True,
             "headers": {"Authorization": f"Bearer {mcp_token}"},
             "allowed_tools": ["get_person_context", "list_standup_roster"],
         })
@@ -217,13 +215,13 @@ def agent_payload(db: Session, meeting: Meeting, mcp_token: str | None, early: b
         **voices.model_block(db, prompt),
         "agent": {
             # "action" lets the agent call tools (MCP servers and custom functions).
-            "response_type": "action" if (mcp_servers or functions) else "voice",
-            "first_message": first,
+            "response_modality": "action" if (mcp_servers or functions) else "audio",
             "mcp_servers": mcp_servers,
             "custom_functions": functions,
             "enable_interruptions": True,
         },
     }
+    payload["model"]["first_message"] = first  # spoken first; belongs to the model block
     if "transcriber" in payload:  # pipeline: help the transcriber with the team's names
         payload["transcriber"]["boostwords"] = [e.name.split()[0] for e in roster(db, meeting)][:20]
     return payload

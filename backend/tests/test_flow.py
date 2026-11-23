@@ -324,14 +324,14 @@ def test_standup_runs_start_to_finish_and_can_leave(client, db, people, monkeypa
     db.commit()
     # No public URL: no tool, silence timeout on the bot instead.
     p = standup.agent_payload(db, m, None)
-    assert p["agent"]["custom_functions"] == [] and p["agent"]["response_type"] == "voice"
+    assert p["agent"]["custom_functions"] == [] and p["agent"]["response_modality"] == "audio"
     assert bots.build_payload(db, m, None)["automatic_leave"]["voice_inactivity_timeout"] == settings.STANDUP_SILENCE_LEAVE_SECONDS
     # With a public URL the agent gets the leave tool.
     monkeypatch.setattr(settings, "PUBLIC_URL", "https://tracker.example.com")
     p = standup.agent_payload(db, m, "tok")
     fn = next(f for f in p["agent"]["custom_functions"] if f["name"] == "end_meeting")
     assert fn["url"] == "https://tracker.example.com/api/agent/leave"
-    assert p["agent"]["response_type"] == "action" and "end_meeting tool" in p["model"]["system_prompt"]
+    assert p["agent"]["response_modality"] == "action" and "end_meeting tool" in p["model"]["system_prompt"]
 
     # The leave endpoint: auth required, only for live stand-up bots.
     removed = []
@@ -487,12 +487,12 @@ def test_early_standup_host_waits_and_asks_only_who_is_there(client, db, people,
     db.commit()
 
     p = standup.agent_payload(db, m, "tok", early=True, signed_in=True)
-    assert p["agent"]["first_message"] == standup.early_first_message(db)
+    assert p["model"]["first_message"] == standup.early_first_message(db)
     prompt = p["model"]["system_prompt"]
     assert "Stay silent until someone speaks" in prompt and "shows everyone in the call" in prompt
     assert standup.intro_text(db) in prompt
     late = standup.agent_payload(db, m, "tok")
-    assert late["agent"]["first_message"] == standup.intro_text(db)
+    assert late["model"]["first_message"] == standup.intro_text(db)
     assert "people already there when you joined are not in it" in late["model"]["system_prompt"]
 
     team = [e.name for e in standup.roster(db, m)]
@@ -570,3 +570,40 @@ def test_generic_left_normally_keeps_the_agents_reason(db):
     db.expire_all()
     assert db.get(Meeting, closed.id).stop_reason.startswith("The stand-up agent closed")
     assert db.get(Meeting, plain.id).stop_reason == generic
+
+
+def test_failed_bot_shows_meetstream_failure_reason(client, db):
+    """bot.failed on Google Meet carries failure_reason; the meeting says why."""
+    import time
+
+    m = Meeting(title="F", bot_id="bot_f", bot_status="joining")
+    db.add(m)
+    db.commit()
+    body = {"event": "bot.stopped", "bot_event": "bot.failed", "bot_id": "bot_f", "bot_status": "Failed",
+            "failure_reason": "google_sign_in_failed", "timestamp": "2026-11-23T10:00:00Z"}
+    assert client.post("/api/webhooks/meetstream", json=body).json() == {"ok": True}
+    for _ in range(20):
+        db.expire_all()
+        if db.get(Meeting, m.id).bot_status == "failed":
+            break
+        time.sleep(0.05)
+    m = db.get(Meeting, m.id)
+    assert m.bot_status == "failed" and "could not sign in to its Google account" in m.stop_reason
+
+
+def test_calendar_events_follow_the_cursor(monkeypatch):
+    """`next` is a cursor sent back as ?cursor=, not a link."""
+    calls = []
+    pages = [
+        {"results": [{"id": "a"}], "has_more": True, "next": "c2"},
+        {"results": [{"id": "b"}], "has_more": False, "next": None},
+    ]
+
+    async def fake_request(self, method, path, **kw):
+        calls.append((path, kw.get("params")))
+        return pages[len(calls) - 1]
+
+    monkeypatch.setattr(MeetStreamClient, "_request", fake_request)
+    events = asyncio.run(MeetStreamClient.__new__(MeetStreamClient).calendar_events())
+    assert [e["id"] for e in events] == ["a", "b"]
+    assert calls == [("/calendar/events", {"limit": 100}), ("/calendar/events", {"limit": 100, "cursor": "c2"})]
