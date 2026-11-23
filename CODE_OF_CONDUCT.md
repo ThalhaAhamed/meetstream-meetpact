@@ -7,5 +7,5 @@ work. Harassment, personal attacks and discriminatory language are not acceptabl
 requests or any other project space.
 
 Report unacceptable behaviour privately to the maintainer through
-[GitHub's private reporting](https://github.com/ThalhaAhamed/meetpact/security/advisories/new) or a
+[GitHub's private reporting](https://github.com/meetstream-ai/meetpact/security/advisories/new) or a
 direct message on GitHub. Reports are handled confidentially.

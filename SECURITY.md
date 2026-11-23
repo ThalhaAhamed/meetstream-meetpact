@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Please do **not** open a public issue for security problems. Report them privately through
-[GitHub's private vulnerability reporting](https://github.com/ThalhaAhamed/meetpact/security/advisories/new).
+[GitHub's private vulnerability reporting](https://github.com/meetstream-ai/meetpact/security/advisories/new).
 Include a description, steps to reproduce, and the version or commit you tested. You'll get an
 acknowledgement within a few days, and fixes are released as soon as they're ready.
 

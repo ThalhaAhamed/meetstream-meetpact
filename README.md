@@ -6,7 +6,7 @@
 
 **A bot joins your stand-up or team meeting, writes the notes, and remembers what everyone said they'd do, so the next meeting starts where the last one ended.**
 
-[![CI](https://img.shields.io/github/actions/workflow/status/ThalhaAhamed/meetpact/ci.yml?label=CI)](https://github.com/ThalhaAhamed/meetpact/actions)
+[![CI](https://img.shields.io/github/actions/workflow/status/meetstream-ai/meetpact/ci.yml?label=CI)](https://github.com/meetstream-ai/meetpact/actions)
 ![Self-hosted](https://img.shields.io/badge/self--hosted-Docker%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux-22201B)
 [![Built on MeetStream](https://img.shields.io/badge/built%20on-MeetStream-FFD95C)](https://meetstream.ai)
 [![License: MIT](https://img.shields.io/badge/license-MIT-FFD95C)](LICENSE)
@@ -28,7 +28,7 @@ Send a bot into your call via **[MeetStream](https://meetstream.ai)** (Google Me
 ## 🚀 Quick start
 
 ```bash
-git clone https://github.com/ThalhaAhamed/meetpact.git
+git clone https://github.com/meetstream-ai/meetpact.git
 cd meetpact
 docker compose up -d      # → http://localhost:8000
 ```
