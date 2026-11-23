@@ -2,15 +2,16 @@
 
 Four presets, from MeetStream's MIA docs (create-agent-config):
 
-* Gemini Live - realtime, provider "google". Works on a MeetStream account
-  without adding a key.
+* Gemini Live - realtime, provider "google".
 * OpenAI      - realtime, provider "openai" (gpt-realtime-mini).
 * Grok        - realtime, provider "xai" (MeetStream picks the model).
 * Claude      - pipeline: Deepgram transcriber -> Claude -> ElevenLabs voice
   (Anthropic has no realtime model).
 
-MeetStream uses the provider keys saved in its dashboard (Configure ->
-Integrations); MeetPact cannot add them. `check()` asks MeetStream whether a
+MeetStream runs every preset with the provider keys saved in its dashboard
+(Configure -> Integrations); MeetPact cannot add them. Its inbuilt keys
+(key_source "meetstream") only cover pipeline mode with Deepgram and OpenAI,
+so none of these presets works without your own key. `check()` asks MeetStream whether a
 preset is usable by creating a throwaway agent config and deleting it.
 
 The choice is an admin setting ("standup_voice_provider", "standup_voice");
@@ -32,8 +33,8 @@ PRESETS: Dict[str, Dict[str, Any]] = {
     "gemini": {
         "label": "Gemini Live", "mode": "realtime", "provider": "google", "model": None,
         "voices": [{"id": v, "label": v} for v in ("Puck", "Charon", "Kore", "Fenrir", "Aoede", "Leda", "Orus", "Zephyr")],
-        "default_voice": "Puck", "needs": None,
-        "note": "Speech-to-speech. Works without adding a key to MeetStream.",
+        "default_voice": "Puck", "needs": "Google",
+        "note": "Speech-to-speech. Needs your Google (Gemini) key in MeetStream (Configure → Integrations → Models).",
     },
     "openai": {
         "label": "OpenAI", "mode": "realtime", "provider": "openai", "model": "gpt-realtime-mini",
@@ -54,8 +55,9 @@ PRESETS: Dict[str, Dict[str, Any]] = {
         "voices": [{"id": "21m00Tcm4TlvDq8ikWAM", "label": "Rachel"}, {"id": "EXAVITQu4vr4xnSDxMaL", "label": "Sarah"},
                    {"id": "pNInz6obpgDQGcFmaJgB", "label": "Adam"}, {"id": "ErXwobaYiN019PkySvjV", "label": "Antoni"},
                    {"id": "cjVigY5qzO86Huf0OWal", "label": "Eric"}],
-        "default_voice": "21m00Tcm4TlvDq8ikWAM", "needs": None,
-        "note": "Listens with Deepgram, thinks with Claude, speaks with ElevenLabs. A little slower to answer than speech-to-speech.",
+        "default_voice": "21m00Tcm4TlvDq8ikWAM", "needs": "Anthropic, Deepgram and ElevenLabs",
+        "note": "Listens with Deepgram, thinks with Claude, speaks with ElevenLabs. Needs those three keys in MeetStream. "
+                "A little slower to answer than speech-to-speech.",
     },
 }
 

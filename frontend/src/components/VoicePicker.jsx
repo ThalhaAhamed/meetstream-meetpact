@@ -46,7 +46,7 @@ export default function VoicePicker({ canEdit = true }) {
         </Select>
       </Field>
       {preset.needs && (
-        <p className="text-xs text-ink-600">MeetStream runs the voice with your own {preset.needs} key: add it at{' '}
+        <p className="text-xs text-ink-600">MeetStream runs the voice with your own {preset.needs} {/,| and /.test(preset.needs) ? 'keys' : 'key'}: add {/,| and /.test(preset.needs) ? 'them' : 'it'} at{' '}
           <a href={data.data.integrations_url} target="_blank" rel="noreferrer" className="font-bold underline decoration-2 underline-offset-2 hover:bg-accent-soft">
             app.meetstream.ai <ExternalLink className="inline h-3 w-3" /></a> under <b>Configure → Integrations</b>, then check.</p>
       )}

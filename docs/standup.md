@@ -50,14 +50,16 @@ Pick the host's voice under **Admin → Bot & settings → Stand-up voice** (or 
 
 | Voice | MeetStream mode | Needs |
 |---|---|---|
-| **Gemini Live** (default) | realtime, provider `google`, voices Puck, Charon, Kore… | nothing extra |
+| **Gemini Live** (default) | realtime, provider `google`, voices Puck, Charon, Kore… | your Google (Gemini) key in MeetStream |
 | **OpenAI** | realtime, provider `openai`, `gpt-realtime-mini`, voices coral, alloy, nova… | your OpenAI key in MeetStream |
 | **Grok** | realtime, provider `xai` (MeetStream picks the model), voices Ara, Eve, Leo, Rex, Sal | your xAI key in MeetStream |
-| **Claude** | pipeline: Deepgram → Claude (`claude-haiku-4-5`) → ElevenLabs voice | Anthropic has no speech-to-speech model, so answers take a little longer |
+| **Claude** | pipeline: Deepgram → Claude (`claude-haiku-4-5`) → ElevenLabs voice | your Anthropic, Deepgram and ElevenLabs keys in MeetStream. Anthropic has no speech-to-speech model, so answers take a little longer |
 
 MeetStream runs these with the provider keys saved in its dashboard (**app.meetstream.ai → Configure →
 Integrations → Models / Voice / Transcription**); there is no documented API to add them, so MeetPact
-links there. **Check with MeetStream** creates a throwaway agent config and deletes it, which tells you
+links there. Every voice needs at least one key: MeetStream's own inbuilt keys only cover pipeline
+agents built on Deepgram and OpenAI, and realtime (speech-to-speech) agents always run on your key.
+The host costs MeetStream's agent fee per hour on top of the bot; your provider bills you for the model. **Check with MeetStream** creates a throwaway agent config and deletes it, which tells you
 straight away whether your account can use the voice ("API key not configured for … OpenAI" means
 add the key in the dashboard).
 
