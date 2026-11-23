@@ -58,6 +58,7 @@ To send a bot into a call you need a MeetStream API key: sign up at [app.meetstr
 ## ✨ Features
 
 - 🎥 **Meeting capture** - the bot joins Google Meet, Zoom or Teams on demand, on a schedule, or from Google Calendar; it posts one short recording note and can be paused or removed.
+  Zoom bots join through your own Zoom app, set up in MeetStream first; meetings outside that app's Zoom account also need an OBF or ZAK token ([Zoom bots](https://docs.meetstream.ai/guides/platforms/zoom) · [OBF and ZAK](https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots)).
 - 📅 **Calendar auto-join** - connect Google Calendar in one click (or Outlook with a refresh token) and the bot books itself into every meeting with a link, minus the titles you filter out.
 - 🚪 **Joins without the host** - optionally, Google Meet bots join signed in to a bot account on the invite, so they don't wait to be admitted; an admitted bot waits up to 30 minutes for a late host.
 - 🧠 **Knowledge per person** - summary, decisions, action items, and each person's update: done, in progress, planned, commitments with deadlines, blockers.
