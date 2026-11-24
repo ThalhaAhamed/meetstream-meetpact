@@ -73,7 +73,7 @@ def build_payload(db: Session, meeting: Meeting, join_at: Optional[datetime]) ->
     payload: Dict[str, Any] = {
         "meeting_link": meeting.meeting_link,
         "bot_name": get_setting(db, "bot_name"),
-        "video_required": False,  # the API defaults to True; audio is all we need
+        "video_required": False,  # audio is all we need; sent explicitly rather than relying on the API default
         "recording_config": {
             "transcript": {"provider": _provider_block()},
             "retention": {"type": "timed", "hours": settings.RETENTION_HOURS},
