@@ -103,9 +103,9 @@ the waiting room off and set access to *Open*, where your account offers it.
 | Variable | Default | Purpose |
 |---|---|---|
 | `MIA_MODE` | `realtime` | `realtime` (speech-to-speech) or `pipeline`. |
-| `MIA_MODEL_PROVIDER` | `google` | Realtime: `google`, `openai`, `xai`. Pipeline: `openai`, `anthropic`. |
+| `MIA_MODEL_PROVIDER` | - | Picks the stand-up voice from `.env` instead of the app. Realtime: `google`, `openai`, `xai`. Pipeline: `openai`, `anthropic`. Without it (and without a pick in the app) stand-ups can't be booked. |
 | `MIA_MODEL` | - | Model name; required for OpenAI. |
-| `MIA_VOICE` | `Puck` | Realtime voice (Google: Puck, Charon, Kore, …) or pipeline voice id. |
+| `MIA_VOICE` | - | With `MIA_MODEL_PROVIDER`: realtime voice (Google: Puck, Charon, Kore, …) or pipeline voice id. |
 | `MIA_VOICE_PROVIDER` | `openai` | Pipeline only: `openai` or `elevenlabs`. |
 | `MIA_TRANSCRIBER_PROVIDER` / `MIA_TRANSCRIBER_MODEL` | `deepgram` / `nova-3` | Pipeline only. |
 | `STANDUP_SILENCE_LEAVE_SECONDS` | `180` | Safety net without `PUBLIC_URL`: the stand-up bot leaves after this much participant silence (it normally leaves 60 s after everyone else does). Keep it long; the agent's own speech doesn't count. |

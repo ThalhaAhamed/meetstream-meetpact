@@ -194,6 +194,10 @@ class JoinBody(BaseModel):
 @router.post("/events/{event_id}/join")
 async def join_event(event_id: str, body: JoinBody, db: Session = Depends(get_db), user: User = Depends(current_user)):
     """Book the bot for one calendar event by hand."""
+    from app.services import voices
+
+    if body.mode == "standup" and not voices.chosen(db):
+        raise HTTPException(400, voices.NO_VOICE)
     try:
         evs = await calendar_sync.upcoming_events(hours=24 * 14)
     except MeetStreamError as exc:

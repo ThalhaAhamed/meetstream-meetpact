@@ -13,7 +13,7 @@ from app.auth import require_admin
 from app.config import settings
 from app.db import get_db
 from app.models import Employee, Team, User
-from app.services import saved_keys, trello_board
+from app.services import saved_keys, trello_board, voices
 from app.services.app_settings import get_setting, set_settings
 from app.services.delivery import email_configured, slack_configured
 from app.services.extraction import OPENAI_STYLE, PROVIDER_LABEL, provider, provider_key, provider_model
@@ -31,7 +31,7 @@ def status(db: Session = Depends(get_db), _: User = Depends(require_admin)):
         "meetstream": meetstream.configured,
         "analysis_provider": provider(),
         "analysis_model": provider_model(),
-        "voice_chosen": bool(get_setting(db, "standup_voice_provider")),
+        "voice_chosen": voices.chosen(db),
         "analysis": bool(provider_key()),
         "teams": [{"id": t.id, "name": t.name, "board_source": t.board_source or "native", "board_name": t.board_name}
                   for t in teams],

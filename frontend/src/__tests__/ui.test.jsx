@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { Card, ItemStatus, relTime } from '../components/ui'
 import CommandMenu from '../components/CommandMenu'
+import VoicePicker from '../components/VoicePicker'
 import { api } from '../api'
 
 afterEach(() => { cleanup(); vi.restoreAllMocks() })
@@ -43,5 +44,26 @@ describe('command menu', () => {
     expect(screen.getByText('Work board')).toBeTruthy()
     expect(screen.queryByText('Reports')).toBeNull()
     expect(screen.getByText('Ask: "board"')).toBeTruthy()
+  })
+})
+
+describe('stand-up voice picker', () => {
+  const presets = [
+    { name: 'gemini', label: 'Gemini Live', mode: 'realtime', needs: 'Google', note: 'n', default_voice: 'Puck', voices: [{ id: 'Puck', label: 'Puck' }] },
+    { name: 'grok', label: 'Grok', mode: 'realtime', needs: 'xAI', note: 'n', default_voice: 'Ara', voices: [{ id: 'Ara', label: 'Ara' }] },
+  ]
+
+  it('has no default: nothing is selected and Save waits for a pick', async () => {
+    vi.spyOn(api, 'voices').mockResolvedValue({ current: null, presets, integrations_url: 'https://app.meetstream.ai' })
+    const choose = vi.spyOn(api, 'chooseVoice').mockResolvedValue({})
+    render(<VoicePicker />)
+    expect(await screen.findByText(/No voice chosen yet/)).toBeTruthy()
+    expect(screen.queryAllByRole('button', { pressed: true })).toHaveLength(0)
+    expect(screen.getByRole('button', { name: 'Save' }).disabled).toBe(true)
+    expect(screen.queryByText('Voice')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Grok/ }))
+    expect(screen.getByRole('button', { name: 'Save' }).disabled).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(choose).toHaveBeenCalledWith({ provider: 'grok', voice: 'Ara' })
   })
 })

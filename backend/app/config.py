@@ -77,16 +77,16 @@ class Settings(BaseSettings):
     STANDUP_SILENCE_LEAVE_SECONDS: int = 180
 
     # ---- Stand-up agent (MeetStream MIA) ---------------------------------
-    # Default: Gemini Live (speech-to-speech). Realtime mode runs on your own
-    # provider key, so add a Google (Gemini) key in MeetStream under Configure ->
-    # Integrations first. Pipeline mode chains a transcriber, an LLM and a voice;
-    # those providers' keys must be added in MeetStream too
+    # No default voice: an admin picks one in the app, or the install sets
+    # MIA_MODEL_PROVIDER here; until then stand-ups can't be booked. Every voice
+    # runs on your own provider key in MeetStream (Configure -> Integrations).
+    # Pipeline mode chains a transcriber, an LLM and a voice
     # (e.g. MIA_MODE=pipeline, MIA_MODEL_PROVIDER=anthropic, MIA_VOICE_PROVIDER=elevenlabs).
     MIA_MODE: str = "realtime"
-    MIA_MODEL_PROVIDER: str = "google"
+    MIA_MODEL_PROVIDER: str = ""  # no default: pick the voice in the app, or set google/openai/xai/anthropic here
     MIA_MODEL: str = ""  # required for openai only
     MIA_VOICE_PROVIDER: str = "openai"  # pipeline mode only
-    MIA_VOICE: str = "Puck"  # realtime: Google Puck/Charon/Kore/...; pipeline: the provider's voice id
+    MIA_VOICE: str = ""  # optional with MIA_MODEL_PROVIDER: realtime Google Puck/Charon/...; pipeline: the provider's voice id
     MIA_TRANSCRIBER_PROVIDER: str = "deepgram"
     MIA_TRANSCRIBER_MODEL: str = "nova-3"
 

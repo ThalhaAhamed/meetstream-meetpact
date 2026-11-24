@@ -8,6 +8,9 @@ os.environ["BACKGROUND_WORKERS"] = "false"
 os.environ["MEETSTREAM_API_KEY"] = "test-key"
 os.environ["PUBLIC_URL"] = ""
 os.environ["SECRET_KEY"] = "test-secret"
+# No stand-up voice unless a test picks one (a developer's .env may set one).
+os.environ["MIA_MODEL_PROVIDER"] = ""
+os.environ["MIA_VOICE"] = ""
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

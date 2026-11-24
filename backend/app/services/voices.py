@@ -14,8 +14,9 @@ MeetStream runs every preset with the provider keys saved in its dashboard
 so none of these presets works without your own key. `check()` asks MeetStream whether a
 preset is usable by creating a throwaway agent config and deleting it.
 
-The choice is an admin setting ("standup_voice_provider", "standup_voice");
-without one, the MIA_* variables in .env decide, as before.
+There is no default voice: an admin picks one (admin setting
+"standup_voice_provider", "standup_voice"), or the install sets MIA_MODEL_PROVIDER
+in .env. Until then `current()` returns None and stand-ups can't be booked.
 """
 from __future__ import annotations
 
@@ -64,22 +65,44 @@ PRESETS: Dict[str, Dict[str, Any]] = {
 _FROM_ENV = {"google": "gemini", "openai": "openai", "xai": "grok", "anthropic": "claude"}
 
 
-def current(db: Session) -> Dict[str, Any]:
-    """The chosen preset and voice (admin setting, else .env's MIA_*)."""
-    name = get_setting(db, "standup_voice_provider") or _FROM_ENV.get(settings.MIA_MODEL_PROVIDER, "gemini")
-    preset = PRESETS.get(name) or PRESETS["gemini"]
-    name = next(k for k, v in PRESETS.items() if v is preset)
+NO_VOICE = ("Pick the stand-up host's voice first: Admin, Setup guide, Stand-up voice. "
+            "Each voice needs its provider key in MeetStream.")
+
+
+class NoVoiceChosen(ValueError):
+    pass
+
+
+def current(db: Session) -> Optional[Dict[str, Any]]:
+    """The chosen preset and voice: the admin setting, else MIA_MODEL_PROVIDER in .env.
+    None when neither is set (there is no default)."""
+    chosen = get_setting(db, "standup_voice_provider")
+    name = chosen or _FROM_ENV.get((settings.MIA_MODEL_PROVIDER or "").strip().lower())
+    preset = PRESETS.get(name or "")
+    if preset is None:
+        return None
     voice = get_setting(db, "standup_voice")
-    if not voice and not get_setting(db, "standup_voice_provider"):
+    if not voice and not chosen:
         voice = settings.MIA_VOICE  # .env choice
     if voice not in {v["id"] for v in preset["voices"]} and not (voice and name == "claude"):
         voice = preset["default_voice"]
     return {"name": name, "voice": voice, **preset}
 
 
-def model_block(db: Session, system_prompt: str) -> Dict[str, Any]:
-    """The parts of a MIA config that depend on the voice choice."""
+def chosen(db: Session) -> bool:
+    return current(db) is not None
+
+
+def require(db: Session) -> Dict[str, Any]:
     c = current(db)
+    if c is None:
+        raise NoVoiceChosen(NO_VOICE)
+    return c
+
+
+def model_block(db: Session, system_prompt: str) -> Dict[str, Any]:
+    """The parts of a MIA config that depend on the voice choice. Raises NoVoiceChosen."""
+    c = require(db)
     use_env = not get_setting(db, "standup_voice_provider")
     out: Dict[str, Any] = {"mode": c["mode"], "model": {"provider": c["provider"], "system_prompt": system_prompt}}
     model = (settings.MIA_MODEL if use_env and settings.MIA_MODEL else None) or c["model"]
@@ -97,7 +120,7 @@ def model_block(db: Session, system_prompt: str) -> Dict[str, Any]:
 def describe(db: Session) -> Dict[str, Any]:
     c = current(db)
     return {
-        "current": {"name": c["name"], "voice": c["voice"]},
+        "current": {"name": c["name"], "voice": c["voice"]} if c else None,
         "presets": [{"name": k, "label": v["label"], "mode": v["mode"], "voices": v["voices"], "needs": v["needs"],
                      "note": v["note"], "default_voice": v["default_voice"]} for k, v in PRESETS.items()],
         "integrations_url": INTEGRATIONS_URL,
@@ -108,7 +131,7 @@ async def check(db: Session) -> str:
     """Ask MeetStream whether the chosen voice can be used. Raises ValueError."""
     if not meetstream.configured:
         raise ValueError("Add the MeetStream API key first.")
-    c = current(db)
+    c = require(db)
     body = {"agent_name": "MeetPact voice check", "agent": {"response_modality": "audio"},
             **model_block(db, "Voice check.")}
     body["model"]["first_message"] = "Hi"

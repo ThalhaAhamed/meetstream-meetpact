@@ -318,6 +318,7 @@ def test_standup_runs_start_to_finish_and_can_leave(client, db, people, monkeypa
     from app.config import settings
     from app.services import bots, standup
     from app.services.app_settings import set_settings
+    set_settings(db, {"standup_voice_provider": "gemini", "standup_voice": "Puck"})  # an admin picked the voice
 
     m = Meeting(title="Daily", mode="standup", meeting_link="https://meet.google.com/x", team_id=people["team"].id)
     db.add(m)
@@ -363,6 +364,7 @@ def test_agent_sees_live_participants_from_webhooks(client, db, people, monkeypa
     from app.config import settings
     from app.services import standup
     from app.services.app_settings import set_settings
+    set_settings(db, {"standup_voice_provider": "gemini", "standup_voice": "Puck"})  # an admin picked the voice
 
     async def send_message(self, bot_id, message):
         return {}
@@ -470,6 +472,7 @@ def test_early_standup_host_waits_and_asks_only_who_is_there(client, db, people,
     from app.config import settings
     from app.services import standup
     from app.services.app_settings import set_settings
+    set_settings(db, {"standup_voice_provider": "gemini", "standup_voice": "Puck"})  # an admin picked the voice
 
     async def send_message(self, bot_id, message):
         return {}
@@ -519,6 +522,7 @@ def test_guest_host_asks_who_joined_first_then_the_rest(client, db, people, monk
     from app.config import settings
     from app.services import standup
     from app.services.app_settings import set_settings
+    set_settings(db, {"standup_voice_provider": "gemini", "standup_voice": "Puck"})  # an admin picked the voice
 
     async def send_message(self, bot_id, message):
         return {}
@@ -607,3 +611,36 @@ def test_calendar_events_follow_the_cursor(monkeypatch):
     events = asyncio.run(MeetStreamClient.__new__(MeetStreamClient).calendar_events())
     assert [e["id"] for e in events] == ["a", "b"]
     assert calls == [("/calendar/events", {"limit": 100}), ("/calendar/events", {"limit": 100, "cursor": "c2"})]
+
+
+def test_no_default_voice_admin_must_pick(client, db, people, monkeypatch):
+    """There is no default stand-up voice: stand-ups are refused until an admin picks one
+    (or the install sets MIA_MODEL_PROVIDER), and a booked stand-up can't start without one."""
+    from app.config import settings
+    from app.services import bots, voices
+    from app.services.meetstream import MeetStreamError
+
+    assert voices.current(db) is None and not voices.chosen(db)
+    login(client, "admin")
+    assert client.get("/api/setup").json()["voice_chosen"] is False
+    assert client.get("/api/setup/voices").json()["current"] is None
+    r = client.post("/api/meetings", json={"title": "Daily", "meeting_link": "https://meet.google.com/x", "mode": "standup"})
+    assert r.status_code == 400 and "Pick the stand-up host's voice" in r.json()["detail"]
+    r = client.post("/api/schedules", json={"title": "Daily", "meeting_link": "https://meet.google.com/x", "mode": "standup",
+                                            "recurrence": "weekdays", "time_of_day": "09:30", "timezone": "UTC",
+                                            "start_date": "2026-11-30"})
+    assert r.status_code == 400
+    m = Meeting(title="Booked earlier", mode="standup", meeting_link="https://meet.google.com/x")
+    db.add(m)
+    db.commit()
+    with pytest.raises(MeetStreamError, match="Pick the stand-up host's voice"):
+        asyncio.run(bots.launch(db, m))
+
+    # A voice set explicitly in .env counts as a choice.
+    monkeypatch.setattr(settings, "MIA_MODEL_PROVIDER", "openai")
+    assert voices.current(db)["name"] == "openai"
+    monkeypatch.setattr(settings, "MIA_MODEL_PROVIDER", "")
+    # Picking one in the app turns stand-ups on.
+    assert client.put("/api/setup/voices", json={"provider": "grok"}).status_code == 200
+    assert client.get("/api/setup").json()["voice_chosen"] is True
+    assert voices.current(db)["name"] == "grok"

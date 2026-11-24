@@ -46,11 +46,11 @@ look up a late joiner's history through the `/mcp` endpoint (`get_person_context
 
 ## Voice providers
 
-Pick the host's voice under **Admin → Bot & settings → Stand-up voice** (or the setup guide):
+There is no default voice. An admin picks the host's voice under **Admin → Bot & settings → Stand-up voice** (or in the setup guide), and stand-ups can't be booked until one is picked. Setting `MIA_MODEL_PROVIDER` in `.env` also counts as a choice.
 
 | Voice | MeetStream mode | Needs |
 |---|---|---|
-| **Gemini Live** (default) | realtime, provider `google`, voices Puck, Charon, Kore… | your Google (Gemini) key in MeetStream |
+| **Gemini Live** | realtime, provider `google`, voices Puck, Charon, Kore… | your Google (Gemini) key in MeetStream |
 | **OpenAI** | realtime, provider `openai`, `gpt-realtime-mini`, voices coral, alloy, nova… | your OpenAI key in MeetStream |
 | **Grok** | realtime, provider `xai` (MeetStream picks the model), voices Ara, Eve, Leo, Rex, Sal | your xAI key in MeetStream |
 | **Claude** | pipeline: Deepgram → Claude (`claude-haiku-4-5`) → ElevenLabs voice | your Anthropic, Deepgram and ElevenLabs keys in MeetStream. Anthropic has no speech-to-speech model, so answers take a little longer |

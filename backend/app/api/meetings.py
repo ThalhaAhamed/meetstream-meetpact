@@ -151,6 +151,7 @@ async def create_meeting(body: MeetingCreate, db: Session = Depends(get_db), use
     """Send the bot now (or at join_at) - the manual join."""
     if body.mode not in ("notetaker", "standup"):
         raise HTTPException(400, "mode must be notetaker or standup")
+    _require_voice(db, body.mode)
     when = body.join_at.astimezone(timezone.utc) if body.join_at and body.join_at.tzinfo else (
         body.join_at.replace(tzinfo=timezone.utc) if body.join_at else None)
     m = Meeting(
@@ -379,6 +380,14 @@ class ScheduleBody(BaseModel):
     active: bool = True
 
 
+def _require_voice(db: Session, mode: str) -> None:
+    """Stand-ups need a host voice; there is no default, so refuse until an admin picks one."""
+    from app.services import voices
+
+    if mode == "standup" and not voices.chosen(db):
+        raise HTTPException(400, voices.NO_VOICE)
+
+
 def _validate_schedule(body: ScheduleBody):
     if body.recurrence not in ("once", "daily", "weekdays", "weekly"):
         raise HTTPException(400, "recurrence must be once, daily, weekdays or weekly")
@@ -428,6 +437,7 @@ def _apply_schedule(db: Session, s: Schedule, body: ScheduleBody):
 @router.post("/schedules")
 def create_schedule(body: ScheduleBody, db: Session = Depends(get_db), user: User = Depends(current_user)):
     _validate_schedule(body)
+    _require_voice(db, body.mode)
     s = Schedule(organizer_user_id=user.id, time_of_day=body.time_of_day, start_date=body.start_date, title=body.title,
                  meeting_link=body.meeting_link)
     _apply_schedule(db, s, body)
@@ -439,6 +449,7 @@ def create_schedule(body: ScheduleBody, db: Session = Depends(get_db), user: Use
 @router.put("/schedules/{schedule_id}")
 def update_schedule(schedule_id: str, body: ScheduleBody, db: Session = Depends(get_db), user: User = Depends(current_user)):
     _validate_schedule(body)
+    _require_voice(db, body.mode)
     s = db.get(Schedule, schedule_id)
     if not s:
         raise HTTPException(404, "Schedule not found.")

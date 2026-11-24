@@ -119,7 +119,11 @@ async def launch(db: Session, meeting: Meeting, join_at: Optional[datetime] = No
     join_at = join_time(join_at)
     payload = build_payload(db, meeting, join_at)
     if meeting.mode == "standup":
+        from app.services import voices
         from app.services.processing import refresh_team_board
+
+        if not voices.chosen(db):  # no default voice: the stand-up can't start without one
+            raise MeetStreamError(voices.NO_VOICE)
 
         await refresh_team_board(db, meeting)  # the host should know the board as it is now
         agent = await meetstream.create_mia_agent(standup.agent_payload(
